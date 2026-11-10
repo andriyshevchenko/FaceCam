@@ -160,4 +160,14 @@
     <string name="n_ready_text">Натисніть «Почати» на плаваючій кнопці, коли будете готові</string>
     <string name="st_ready">Готово — чекаю на вас</string>
     <string name="btn_cancel">✕  Скасувати</string>
+
+    <!-- v1.5: редактор обрізання -->
+    <string name="trim_title">Обрізати відео</string>
+    <string name="trim_short">✂ Обрізати</string>
+    <string name="trim_save_copy">Зберегти копію</string>
+    <string name="trim_replace">Замінити оригінал</string>
+    <string name="trim_keyframe_hint">Тягніть білі повзунки. Обрізання миттєве й без втрати якості; початок прилипає до найближчого ключового кадру (до ~1 с).</string>
+    <string name="trim_done_replaced">Відео обрізано</string>
+    <string name="trim_done_copy">Обрізану копію збережено в галерею</string>
+    <string name="trim_done_copy_fallback">Не вдалося замінити оригінал — збережено обрізану копію</string>
 </resources>

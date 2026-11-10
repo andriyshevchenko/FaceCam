@@ -829,6 +829,9 @@ public class RecorderService extends Service {
                 .setContentIntent(viewPi)
                 .setAutoCancel(true)
                 .addAction(new Notification.Action.Builder(null, getString(R.string.share), sharePi).build())
+                .addAction(new Notification.Action.Builder(null, getString(R.string.trim_short),
+                        PendingIntent.getActivity(this, 6, TrimActivity.intent(this, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT)).build())
                 .addAction(new Notification.Action.Builder(null, getString(R.string.n_my_recordings), openAppIntent()).build())
                 .build();
         getSystemService(NotificationManager.class).notify(DONE_ID, n);

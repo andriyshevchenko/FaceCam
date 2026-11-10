@@ -20,9 +20,44 @@ final class Trimmer {
     /** @return тривалість результату в мікросекундах */
     static long remux(File src, FileDescriptor dst, long startUs, long endUs) throws Exception {
         MediaExtractor ex = new MediaExtractor();
+        ex.setDataSource(src.getPath());
+        MediaMetadataRetriever r = new MediaMetadataRetriever();
+        try { r.setDataSource(src.getPath()); } catch (Exception ignored) { }
+        return remux(ex, r, dst, startUs, endUs);
+    }
+
+    static long remux(android.content.Context ctx, android.net.Uri src, FileDescriptor dst, long startUs, long endUs) throws Exception {
+        MediaExtractor ex = new MediaExtractor();
+        ex.setDataSource(ctx, src, null);
+        MediaMetadataRetriever r = new MediaMetadataRetriever();
+        try { r.setDataSource(ctx, src); } catch (Exception ignored) { }
+        return remux(ex, r, dst, startUs, endUs);
+    }
+
+    /** Час першого ключового кадру відео, не раніше за us (відносно початку файлу). */
+    static long nextSyncUs(android.content.Context ctx, android.net.Uri src, long us) {
+        MediaExtractor ex = new MediaExtractor();
+        try {
+            ex.setDataSource(ctx, src, null);
+            for (int i = 0; i < ex.getTrackCount(); i++) {
+                String mime = ex.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("video/")) { ex.selectTrack(i); break; }
+            }
+            long base = ex.getSampleTime();
+            ex.seekTo(base + us, MediaExtractor.SEEK_TO_NEXT_SYNC);
+            long t = ex.getSampleTime();
+            return t < 0 ? us : t - base;
+        } catch (Exception e) {
+            return us;
+        } finally {
+            ex.release();
+        }
+    }
+
+    private static long remux(MediaExtractor ex, MediaMetadataRetriever r, FileDescriptor dst,
+                              long startUs, long endUs) throws Exception {
         MediaMuxer mux = null;
         try {
-            ex.setDataSource(src.getPath());
             int n = ex.getTrackCount();
             mux = new MediaMuxer(dst, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
 
@@ -45,9 +80,7 @@ final class Trimmer {
             }
             if (!hasVideo) throw new IllegalStateException("no video track");
 
-            MediaMetadataRetriever r = new MediaMetadataRetriever();
             try {
-                r.setDataSource(src.getPath());
                 String rot = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
                 if (rot != null) mux.setOrientationHint(Integer.parseInt(rot));
             } catch (Exception ignored) {

@@ -503,6 +503,7 @@ public class MainActivity extends Activity {
             ((TextView) row.findViewById(R.id.itemSub)).setText(dur + " · " + Formatter.formatShortFileSize(this, r.size));
             row.findViewById(R.id.itemBody).setOnClickListener(v -> play(r.uri));
             row.findViewById(R.id.itemShare).setOnClickListener(v -> share(r.uri));
+            row.findViewById(R.id.itemTrim).setOnClickListener(v -> startActivity(TrimActivity.intent(this, r.uri)));
             row.findViewById(R.id.itemDelete).setOnClickListener(v -> confirmDelete(r));
             list.addView(row);
         }

@@ -160,4 +160,14 @@
     <string name="n_ready_text">Tap “Start” on the floating button when you\'re ready</string>
     <string name="st_ready">Ready — waiting for you</string>
     <string name="btn_cancel">✕  Cancel</string>
+
+    <!-- v1.5: trim editor -->
+    <string name="trim_title">Trim video</string>
+    <string name="trim_short">✂ Trim</string>
+    <string name="trim_save_copy">Save as copy</string>
+    <string name="trim_replace">Replace original</string>
+    <string name="trim_keyframe_hint">Drag the white handles. Trimming is instant and lossless; the start snaps to the nearest keyframe (up to ~1 s).</string>
+    <string name="trim_done_replaced">Video trimmed</string>
+    <string name="trim_done_copy">Trimmed copy saved to gallery</string>
+    <string name="trim_done_copy_fallback">Couldn\'t replace the original — saved a trimmed copy</string>
 </resources>
