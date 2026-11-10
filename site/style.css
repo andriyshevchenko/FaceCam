@@ -114,3 +114,7 @@ footer a { color: var(--muted); }
   .grid, .steps, .privacy-box { grid-template-columns: 1fr; }
   .nav-links a.hide-sm { display: none; }
 }
+
+.legal table { table-layout: fixed; }
+.legal td, .legal th { overflow-wrap: anywhere; }
+@media (max-width: 520px) { .legal table { font-size: 13px; } .legal td, .legal th { padding: 8px 4px; } }
