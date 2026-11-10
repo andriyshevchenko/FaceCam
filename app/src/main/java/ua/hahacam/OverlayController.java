@@ -10,6 +10,7 @@ import android.graphics.PixelFormat;
 import android.graphics.SurfaceTexture;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -51,7 +52,8 @@ final class OverlayController {
     private LinearLayout root;
     private FrameLayout circle;
     private TextureView tv;
-    private TextView primary, cancel, timer, bigCount;
+    private TextView primary, cancel, timer, bigCount, volLevel;
+    private AudioManager audio;
     private WindowManager.LayoutParams lp;
     private float aspect = 0f;           // ширина/висота кадру камери «стоячи»
     private boolean shown;
@@ -155,6 +157,25 @@ final class OverlayController {
         rlp.topMargin = (int) (6 * dp);
         root.addView(row, rlp);
 
+        // Гучність без системного повзунка (він не з'являється, тож і у відео не потрапить)
+        audio = ctx.getSystemService(AudioManager.class);
+        LinearLayout vol = new LinearLayout(ctx);
+        vol.setOrientation(LinearLayout.HORIZONTAL);
+        vol.setGravity(Gravity.CENTER_VERTICAL);
+        vol.addView(volButton("−", AudioManager.ADJUST_LOWER));
+        volLevel = new TextView(ctx);
+        volLevel.setTextColor(0xCCFFFFFF);
+        volLevel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        volLevel.setTypeface(Typeface.MONOSPACE);
+        volLevel.setGravity(Gravity.CENTER);
+        volLevel.setMinWidth((int) (48 * dp));
+        vol.addView(volLevel);
+        vol.addView(volButton("+", AudioManager.ADJUST_RAISE));
+        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(-2, -2);
+        vlp.topMargin = (int) (4 * dp);
+        root.addView(vol, vlp);
+        updateVolume();
+
         // Перетягування за кружечок
         circle.setOnTouchListener(new View.OnTouchListener() {
             final int slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
@@ -202,6 +223,57 @@ final class OverlayController {
         return true;
     }
 
+    /** Кнопка гучності: дотик — один крок, утримання — повтор. Без прапорця FLAG_SHOW_UI. */
+    @SuppressLint("ClickableViewAccessibility")
+    private TextView volButton(String label, int direction) {
+        TextView b = new TextView(ctx);
+        b.setText(label);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+        int s = (int) (36 * dp);
+        b.setLayoutParams(new LinearLayout.LayoutParams(s, s));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(0x33FFFFFF);
+        b.setBackground(bg);
+        Runnable repeat = new Runnable() {
+            @Override public void run() {
+                step(direction);
+                ui.postDelayed(this, 160);
+            }
+        };
+        b.setOnTouchListener((v, e) -> {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    step(direction);
+                    ui.postDelayed(repeat, 450);
+                    v.setAlpha(0.6f);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    ui.removeCallbacks(repeat);
+                    v.setAlpha(1f);
+                    return true;
+            }
+            return false;
+        });
+        return b;
+    }
+
+    private void step(int direction) {
+        try { audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, 0); } catch (Exception ignored) { }
+        updateVolume();
+    }
+
+    private void updateVolume() {
+        if (audio == null || volLevel == null) return;
+        int max = Math.max(1, audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        int cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+        volLevel.setText((cur == 0 ? "🔇 " : "🔊 ") + (cur * 100 / max) + "%");
+    }
+
     /** Пропорції кадру камери «стоячи» — щоб прев'ю не розтягувалось. */
     void setUprightAspect(float a) {
         aspect = a;
@@ -226,6 +298,7 @@ final class OverlayController {
     };
 
     private void refresh() {
+        updateVolume();
         int st = RecorderService.state;
         long now = System.currentTimeMillis();
         long cd = RecorderService.countdownUntilWall - now;
