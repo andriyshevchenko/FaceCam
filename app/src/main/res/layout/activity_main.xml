@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FaceCam"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:alpha="0.7"
+            android:text="Запис камери у фоні, поки ви в інших програмах"
+            android:textSize="14sp" />
+
+        <!-- Статус -->
+        <LinearLayout
+            android:id="@+id/statusCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/card"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:id="@+id/statusTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Готово до запису"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/statusTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="monospace"
+                android:text="00:00"
+                android:textSize="44sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/statusSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.7"
+                android:gravity="center"
+                android:text=""
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnRec"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/btn_rec"
+                android:text="●  Почати запис"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Налаштування -->
+        <TextView
+            style="@style/Section"
+            android:text="Камера" />
+
+        <RadioGroup
+            android:id="@+id/rgCamera"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbFront"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Фронтальна" />
+
+            <RadioButton
+                android:id="@+id/rbBack"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Основна" />
+        </RadioGroup>
+
+        <RadioGroup
+            android:id="@+id/rgQuality"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rb1080"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="1080p" />
+
+            <RadioButton
+                android:id="@+id/rb720"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="720p (менші файли)" />
+        </RadioGroup>
+
+        <Switch
+            android:id="@+id/swAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Записувати звук з мікрофона" />
+
+        <TextView
+            style="@style/Section"
+            android:text="Таймер" />
+
+        <TextView
+            style="@style/Label"
+            android:text="Затримка перед стартом (встигнути перейти в Instagram)" />
+
+        <Spinner
+            android:id="@+id/spDelay"
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <TextView
+            style="@style/Label"
+            android:text="Автоматично зупинити через" />
+
+        <Spinner
+            android:id="@+id/spAutoStop"
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
+
+        <TextView
+            style="@style/Section"
+            android:text="Сповіщення" />
+
+        <Switch
+            android:id="@+id/swHidden"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Приховати сповіщення під час запису" />
+
+        <TextView
+            android:id="@+id/hiddenHint"
+            style="@style/Label"
+            android:text="Сповіщення стане непомітним: без значка вгорі, згорнуте внизу шторки, його можна змахнути. Зупинити запис — тут, у програмі. Зелена точка камери Android залишиться — її жодна програма прибрати не може." />
+
+        <Button
+            android:id="@+id/btnChannel"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Вимкнути це сповіщення повністю →"
+            android:textAllCaps="false" />
+
+        <!-- Записи -->
+        <TextView
+            style="@style/Section"
+            android:text="Мої записи" />
+
+        <TextView
+            android:id="@+id/emptyList"
+            style="@style/Label"
+            android:text="Поки що немає записів. Відео зберігаються в галерею: Movies/FaceCam" />
+
+        <LinearLayout
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

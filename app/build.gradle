@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'ua.facecam'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ua.facecam'
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        rel {
+            storeFile file('facecam.jks')
+            storePassword 'facecam123'
+            keyAlias 'facecam'
+            keyPassword 'facecam123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.rel
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint { abortOnError false; checkReleaseBuilds false }
+}

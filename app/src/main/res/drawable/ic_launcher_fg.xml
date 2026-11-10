@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- корпус камери -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M34,40h30a4,4 0,0 1,4 4v4l10,-7v26l-10,-7v4a4,4 0,0 1,-4 4H34a4,4 0,0 1,-4 -4V44a4,4 0,0 1,4 -4z" />
+    <!-- червона точка запису -->
+    <path android:fillColor="#E53935"
+        android:pathData="M49,54m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+</vector>
