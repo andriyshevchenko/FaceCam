@@ -1,6 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="consent_title">Перед початком</string>
-    <string name="consent_body">FaceCam записує відео з камери та звук з мікрофона після того, як ви натиснете «Почати запис», — навіть якщо ви перейдете в іншу програму або заблокуєте екран. Поки йде запис, у шторці показується сповіщення з кнопкою «Стоп».\n\nВідео зберігаються лише на вашому телефоні й нікуди не надсилаються.\n\nПогоджуючись, ви підтверджуєте, що розумієте:\n• у кадр можуть випадково потрапити інші люди — не знімайте їх без згоди;\n• запис триває у фоні та на заблокованому екрані, доки ви його не зупините;\n• ви самі відповідаєте за свої записи та за те, як їх використовуєте.</string>
-    <string name="consent_check">Я прочитав(ла) та погоджуюся з Умовами використання й Політикою конфіденційності</string>
+    <!-- Main screen -->
+    <string name="tagline">Records your camera in the background while you use other apps</string>
+    <string name="status_ready">Ready to record</string>
+    <string name="btn_start">●  Start recording</string>
+    <string name="btn_stop">■  Stop and save</string>
+    <string name="section_camera">Camera</string>
+    <string name="cam_front">Front</string>
+    <string name="cam_back">Back</string>
+    <string name="cam_front_lc">front</string>
+    <string name="cam_back_lc">back</string>
+    <string name="q_1080">1080p</string>
+    <string name="q_720">720p (smaller files)</string>
+    <string name="audio_switch">Record microphone audio</string>
+    <string name="section_timer">Timer</string>
+    <string name="delay_label">Delay before start (time to switch to Instagram)</string>
+    <string name="autostop_label">Stop automatically after</string>
+    <string name="section_notif">Notification</string>
+    <string name="hidden_switch">Hide the notification while recording</string>
+    <string name="hidden_hint">The notification becomes unobtrusive: no icon in the status bar, collapsed at the bottom of the shade, and you can swipe it away. Stop recording here in the app. Android\'s green camera dot stays — no app can remove it.</string>
+    <string name="hidden_disable">Turn this notification off completely →</string>
+    <string name="section_recordings">My recordings</string>
+    <string name="empty_list">No recordings yet. Videos are saved to your gallery: Movies/FaceCam</string>
+    <string name="terms">Terms of Use</string>
+    <string name="privacy">Privacy</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <string-array name="delay_labels">
+        <item>No delay</item>
+        <item>3 seconds</item>
+        <item>5 seconds</item>
+        <item>10 seconds</item>
+    </string-array>
+    <string-array name="autostop_labels">
+        <item>Off</item>
+        <item>1 min</item>
+        <item>3 min</item>
+        <item>5 min</item>
+        <item>10 min</item>
+        <item>15 min</item>
+        <item>30 min</item>
+        <item>60 min</item>
+    </string-array>
+
+    <!-- Status -->
+    <string name="st_recording">● Recording</string>
+    <string name="st_autostop_in">Auto-stop in %s</string>
+    <string name="st_no_autostop">No auto-stop</string>
+    <string name="st_starts_in">Starting in</string>
+    <string name="st_starting_camera">Starting camera…</string>
+    <string name="st_countdown_hint">Switch to Instagram or your script</string>
+    <string name="st_saving">Saving video…</string>
+    <string name="with_sound">with sound</string>
+    <string name="no_sound">no sound</string>
+
+    <!-- Toasts -->
+    <string name="perm_camera_denied">Recording isn\'t possible without camera permission</string>
+    <string name="perm_mic_denied">Microphone not allowed — recording without sound</string>
+    <string name="start_failed">Couldn\'t start: %s</string>
+    <string name="started_delay">Recording starts in %d s — you can switch to another app</string>
+    <string name="started_now">Recording started — you can switch to another app</string>
+    <string name="toast_saved">Video saved to gallery</string>
+    <string name="channel_settings_toast">Turn off “Recording (hidden)”. Recording will keep working</string>
+    <string name="no_player">No app to play the video</string>
+    <string name="share_title">Share video</string>
+    <string name="delete_title">Delete recording?</string>
+    <string name="delete_failed">Couldn\'t delete</string>
+
+    <!-- Consent -->
+    <string name="consent_title">Before you start</string>
+    <string name="consent_body">FaceCam records camera video and microphone audio after you tap “Start recording” — even when you switch to another app or lock the screen. While recording, a notification with a “Stop” button is shown in the notification shade.\n\nVideos are stored only on your phone and are never sent anywhere.\n\nBy agreeing, you confirm that you understand:\n• other people may accidentally appear in the frame — don\'t film them without consent;\n• recording continues in the background and with the screen locked until you stop it;\n• you are responsible for your recordings and how you use them.</string>
+    <string name="consent_check">I have read and agree to the Terms of Use and Privacy Policy</string>
+    <string name="consent_exit">Exit</string>
+    <string name="consent_agree">I agree</string>
+    <string name="legal_lang_anchor">#en</string>
+
+    <!-- Service: errors -->
+    <string name="err_fgs">Android didn\'t allow starting: %s</string>
+    <string name="err_no_camera_perm">No camera permission</string>
+    <string name="err_no_camera">Camera not found</string>
+    <string name="err_disconnected_saved">Another app took the camera — recording saved</string>
+    <string name="err_camera_busy">The camera is busy in another app</string>
+    <string name="err_camera_code">Camera error (%d)</string>
+    <string name="err_open">Couldn\'t open the camera: %s</string>
+    <string name="err_record_code">Recording error (%d)</string>
+    <string name="err_config">The camera doesn\'t support this recording mode</string>
+    <string name="err_camera">Camera error: %s</string>
+    <string name="err_start">Couldn\'t start recording: %s</string>
+
+    <!-- Service: notifications -->
+    <string name="ch_normal">Recording</string>
+    <string name="ch_normal_desc">Notification while recording, with a “Stop” button</string>
+    <string name="ch_hidden">Recording (hidden)</string>
+    <string name="ch_hidden_desc">Minimal notification without a status bar icon. Can be turned off completely.</string>
+    <string name="ch_done">Finished recordings</string>
+    <string name="ch_done_desc">Tells you the video is saved, with a “Share” button</string>
+    <string name="n_hidden_text">Open the app to stop</string>
+    <string name="n_stop">Stop</string>
+    <string name="n_stop_save">■  Stop and save</string>
+    <string name="n_rec_title">● Recording · %s</string>
+    <string name="n_rec_text_autostop">Auto-stop on timer. Tap “Stop” to save earlier</string>
+    <string name="n_rec_text">Tap “Stop” to save the video</string>
+    <string name="n_countdown_title">Recording starts in a few seconds</string>
+    <string name="n_countdown_text">You can switch to another app</string>
+    <string name="n_done_title">Video saved (%s)</string>
+    <string name="n_done_text">Gallery → Movies/FaceCam. Tap to watch</string>
+    <string name="n_my_recordings">My recordings</string>
 </resources>

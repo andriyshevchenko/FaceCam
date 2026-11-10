@@ -142,7 +142,7 @@ public class RecorderService extends Service {
             try {
                 startForeground(NOTIF_ID, n, type);
             } catch (RuntimeException e) {
-                lastError = "Android не дозволив запуск: " + e.getMessage();
+                lastError = getString(R.string.err_fgs, e.getMessage());
                 state = IDLE;
                 stopSelf();
                 return;
@@ -167,13 +167,13 @@ public class RecorderService extends Service {
     private void openCamera() {
         if (stopping) return;
         if (!hasPerm(Manifest.permission.CAMERA)) {
-            stopInternal("Немає дозволу на камеру");
+            stopInternal(getString(R.string.err_no_camera_perm));
             return;
         }
         CameraManager cm = getSystemService(CameraManager.class);
         try {
             String id = pickCamera(cm, prefs.front);
-            if (id == null) { stopInternal("Камеру не знайдено"); return; }
+            if (id == null) { stopInternal(getString(R.string.err_no_camera)); return; }
             CameraCharacteristics ch = cm.getCameraCharacteristics(id);
             setupRecorder(ch);
             cm.openCamera(id, new CameraDevice.StateCallback() {
@@ -186,17 +186,17 @@ public class RecorderService extends Service {
                 @Override public void onDisconnected(CameraDevice c) {
                     if (cleaned) { c.close(); return; }
                     camera = c;
-                    stopInternal(recorderStarted ? "Камеру забрала інша програма — запис збережено"
-                                                 : "Камера зайнята іншою програмою");
+                    stopInternal(getString(recorderStarted ? R.string.err_disconnected_saved
+                                                           : R.string.err_camera_busy));
                 }
                 @Override public void onError(CameraDevice c, int error) {
                     if (cleaned) { c.close(); return; }
                     camera = c;
-                    stopInternal("Помилка камери (" + error + ")");
+                    stopInternal(getString(R.string.err_camera_code, error));
                 }
             }, bg);
         } catch (Exception e) {
-            stopInternal("Не вдалося відкрити камеру: " + e.getMessage());
+            stopInternal(getString(R.string.err_open, e.getMessage()));
         }
     }
 
@@ -223,7 +223,7 @@ public class RecorderService extends Service {
         v.put(MediaStore.Video.Media.IS_PENDING, 1);
         ContentResolver cr = getContentResolver();
         outUri = cr.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
-        if (outUri == null) throw new IllegalStateException("не вдалося створити файл");
+        if (outUri == null) throw new IllegalStateException("cannot create output file");
         pfd = cr.openFileDescriptor(outUri, "rw");
 
         boolean audio = prefs.audio && hasPerm(Manifest.permission.RECORD_AUDIO);
@@ -255,7 +255,7 @@ public class RecorderService extends Service {
             }
         });
         recorder.setOnErrorListener((mr, what, extra) ->
-                bg.post(() -> stopInternal("Помилка запису (" + what + ")")));
+                bg.post(() -> stopInternal(getString(R.string.err_record_code, what))));
         recorder.prepare();
         recorderSurface = recorder.getSurface();
     }
@@ -302,12 +302,12 @@ public class RecorderService extends Service {
                             startRecording(ch);
                         }
                         @Override public void onConfigureFailed(CameraCaptureSession s) {
-                            stopInternal("Камера не підтримує такий режим запису");
+                            stopInternal(getString(R.string.err_config));
                         }
                     });
             camera.createCaptureSession(cfg);
         } catch (Exception e) {
-            stopInternal("Помилка камери: " + e.getMessage());
+            stopInternal(getString(R.string.err_camera, e.getMessage()));
         }
     }
 
@@ -327,7 +327,7 @@ public class RecorderService extends Service {
             state = RECORDING;
             notifyUpdate();
         } catch (Exception e) {
-            stopInternal("Не вдалося почати запис: " + e.getMessage());
+            stopInternal(getString(R.string.err_start, e.getMessage()));
         }
     }
 
@@ -422,14 +422,14 @@ public class RecorderService extends Service {
 
     static void createChannels(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
-        NotificationChannel normal = new NotificationChannel(CH_NORMAL, "Запис (звичайне)", NotificationManager.IMPORTANCE_LOW);
-        normal.setDescription("Сповіщення під час запису з кнопкою «Стоп»");
+        NotificationChannel normal = new NotificationChannel(CH_NORMAL, c.getString(R.string.ch_normal), NotificationManager.IMPORTANCE_LOW);
+        normal.setDescription(c.getString(R.string.ch_normal_desc));
         normal.setShowBadge(false);
-        NotificationChannel hidden = new NotificationChannel(CH_HIDDEN, "Запис (приховане)", NotificationManager.IMPORTANCE_MIN);
-        hidden.setDescription("Мінімальне сповіщення без значка в рядку стану. Можна вимкнути повністю.");
+        NotificationChannel hidden = new NotificationChannel(CH_HIDDEN, c.getString(R.string.ch_hidden), NotificationManager.IMPORTANCE_MIN);
+        hidden.setDescription(c.getString(R.string.ch_hidden_desc));
         hidden.setShowBadge(false);
-        NotificationChannel done = new NotificationChannel(CH_DONE, "Готові записи", NotificationManager.IMPORTANCE_DEFAULT);
-        done.setDescription("Повідомлення, що відео збережено, з кнопкою «Поділитися»");
+        NotificationChannel done = new NotificationChannel(CH_DONE, c.getString(R.string.ch_done), NotificationManager.IMPORTANCE_DEFAULT);
+        done.setDescription(c.getString(R.string.ch_done_desc));
         done.setSound(null, null);
         nm.createNotificationChannel(normal);
         nm.createNotificationChannel(hidden);
@@ -460,30 +460,30 @@ public class RecorderService extends Service {
         }
 
         if (hidden) {
-            b.setContentTitle("FaceCam").setContentText("Відкрийте програму, щоб зупинити")
+            b.setContentTitle(getString(R.string.app_name)).setContentText(getString(R.string.n_hidden_text))
              .setOngoing(false).setShowWhen(false)
-             .addAction(new Notification.Action.Builder(null, "Стоп", stopIntent()).build());
+             .addAction(new Notification.Action.Builder(null, getString(R.string.n_stop), stopIntent()).build());
             return b.build();
         }
 
         b.setOngoing(true)
-         .addAction(new Notification.Action.Builder(null, "■  Стоп і зберегти", stopIntent()).build());
+         .addAction(new Notification.Action.Builder(null, getString(R.string.n_stop_save), stopIntent()).build());
         if (state == RECORDING) {
-            String cam = prefs.front ? "фронтальна" : "основна";
-            b.setContentTitle("● Йде запис · " + cam);
+            String cam = getString(prefs.front ? R.string.cam_front_lc : R.string.cam_back_lc);
+            b.setContentTitle(getString(R.string.n_rec_title, cam));
             b.setUsesChronometer(true).setShowWhen(true);
             if (autoStopAtWall > 0) {
                 b.setWhen(autoStopAtWall).setChronometerCountDown(true)
-                 .setContentText("Автостоп через таймер. Натисніть «Стоп», щоб зберегти раніше");
+                 .setContentText(getString(R.string.n_rec_text_autostop));
             } else {
-                b.setWhen(startedAtWall).setContentText("Натисніть «Стоп», щоб зберегти відео");
+                b.setWhen(startedAtWall).setContentText(getString(R.string.n_rec_text));
             }
         } else if (countdownUntilWall > System.currentTimeMillis()) {
-            b.setContentTitle("Запис почнеться за кілька секунд")
+            b.setContentTitle(getString(R.string.n_countdown_title))
              .setUsesChronometer(true).setChronometerCountDown(true).setWhen(countdownUntilWall)
-             .setContentText("Можна перемикатися в іншу програму");
+             .setContentText(getString(R.string.n_countdown_text));
         } else {
-            b.setContentTitle("Запуск камери…");
+            b.setContentTitle(getString(R.string.st_starting_camera));
         }
         return b.build();
     }
@@ -501,7 +501,7 @@ public class RecorderService extends Service {
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         send.setClipData(ClipData.newRawUri("video", uri));
-        Intent chooser = Intent.createChooser(send, "Поділитися відео");
+        Intent chooser = Intent.createChooser(send, getString(R.string.share_title));
         chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
         PendingIntent sharePi = PendingIntent.getActivity(this, 2, chooser,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
@@ -513,12 +513,12 @@ public class RecorderService extends Service {
 
         Notification n = new Notification.Builder(this, CH_DONE)
                 .setSmallIcon(R.drawable.ic_stat_rec)
-                .setContentTitle("Відео збережено (" + MainActivity.fmtDuration(durationMs) + ")")
-                .setContentText("Галерея → Movies/FaceCam. Натисніть, щоб переглянути")
+                .setContentTitle(getString(R.string.n_done_title, MainActivity.fmtDuration(durationMs)))
+                .setContentText(getString(R.string.n_done_text))
                 .setContentIntent(viewPi)
                 .setAutoCancel(true)
-                .addAction(new Notification.Action.Builder(null, "Поділитися", sharePi).build())
-                .addAction(new Notification.Action.Builder(null, "Мої записи", openAppIntent()).build())
+                .addAction(new Notification.Action.Builder(null, getString(R.string.share), sharePi).build())
+                .addAction(new Notification.Action.Builder(null, getString(R.string.n_my_recordings), openAppIntent()).build())
                 .build();
         getSystemService(NotificationManager.class).notify(DONE_ID, n);
     }

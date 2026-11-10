@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Головний екран -->
+    <string name="tagline">Запис камери у фоні, поки ви в інших програмах</string>
+    <string name="status_ready">Готово до запису</string>
+    <string name="btn_start">●  Почати запис</string>
+    <string name="btn_stop">■  Зупинити і зберегти</string>
+    <string name="section_camera">Камера</string>
+    <string name="cam_front">Фронтальна</string>
+    <string name="cam_back">Основна</string>
+    <string name="cam_front_lc">фронтальна</string>
+    <string name="cam_back_lc">основна</string>
+    <string name="q_1080">1080p</string>
+    <string name="q_720">720p (менші файли)</string>
+    <string name="audio_switch">Записувати звук з мікрофона</string>
+    <string name="section_timer">Таймер</string>
+    <string name="delay_label">Затримка перед стартом (встигнути перейти в Instagram)</string>
+    <string name="autostop_label">Автоматично зупинити через</string>
+    <string name="section_notif">Сповіщення</string>
+    <string name="hidden_switch">Приховати сповіщення під час запису</string>
+    <string name="hidden_hint">Сповіщення стане непомітним: без значка вгорі, згорнуте внизу шторки, його можна змахнути. Зупинити запис — тут, у програмі. Зелена точка камери Android залишиться — її жодна програма прибрати не може.</string>
+    <string name="hidden_disable">Вимкнути це сповіщення повністю →</string>
+    <string name="section_recordings">Мої записи</string>
+    <string name="empty_list">Поки що немає записів. Відео зберігаються в галерею: Movies/FaceCam</string>
+    <string name="terms">Умови використання</string>
+    <string name="privacy">Конфіденційність</string>
+    <string name="share">Поділитися</string>
+    <string name="delete">Видалити</string>
+    <string name="cancel">Скасувати</string>
+
+    <string-array name="delay_labels">
+        <item>Без затримки</item>
+        <item>3 секунди</item>
+        <item>5 секунд</item>
+        <item>10 секунд</item>
+    </string-array>
+    <string-array name="autostop_labels">
+        <item>Вимкнено</item>
+        <item>1 хв</item>
+        <item>3 хв</item>
+        <item>5 хв</item>
+        <item>10 хв</item>
+        <item>15 хв</item>
+        <item>30 хв</item>
+        <item>60 хв</item>
+    </string-array>
+
+    <!-- Статус -->
+    <string name="st_recording">● Йде запис</string>
+    <string name="st_autostop_in">Автостоп через %s</string>
+    <string name="st_no_autostop">Без автостопу</string>
+    <string name="st_starts_in">Старт через</string>
+    <string name="st_starting_camera">Запуск камери…</string>
+    <string name="st_countdown_hint">Переходьте в Instagram чи сценарій</string>
+    <string name="st_saving">Зберігаю відео…</string>
+    <string name="with_sound">зі звуком</string>
+    <string name="no_sound">без звуку</string>
+
+    <!-- Тости -->
+    <string name="perm_camera_denied">Без дозволу на камеру запис неможливий</string>
+    <string name="perm_mic_denied">Мікрофон не дозволено — запис буде без звуку</string>
+    <string name="start_failed">Не вдалося запустити: %s</string>
+    <string name="started_delay">Запис почнеться через %d с — можна переходити в іншу програму</string>
+    <string name="started_now">Запис пішов — можна переходити в іншу програму</string>
+    <string name="toast_saved">Відео збережено в галерею</string>
+    <string name="channel_settings_toast">Вимкніть перемикач «Запис (приховане)». Запис усе одно працюватиме</string>
+    <string name="no_player">Немає програми для перегляду відео</string>
+    <string name="share_title">Поділитися відео</string>
+    <string name="delete_title">Видалити запис?</string>
+    <string name="delete_failed">Не вдалося видалити</string>
+
+    <!-- Згода -->
+    <string name="consent_title">Перед початком</string>
+    <string name="consent_body">FaceCam записує відео з камери та звук з мікрофона після того, як ви натиснете «Почати запис», — навіть якщо ви перейдете в іншу програму або заблокуєте екран. Поки йде запис, у шторці показується сповіщення з кнопкою «Стоп».\n\nВідео зберігаються лише на вашому телефоні й нікуди не надсилаються.\n\nПогоджуючись, ви підтверджуєте, що розумієте:\n• у кадр можуть випадково потрапити інші люди — не знімайте їх без згоди;\n• запис триває у фоні та на заблокованому екрані, доки ви його не зупините;\n• ви самі відповідаєте за свої записи та за те, як їх використовуєте.</string>
+    <string name="consent_check">Я прочитав(ла) та погоджуюся з Умовами використання й Політикою конфіденційності</string>
+    <string name="consent_exit">Вийти</string>
+    <string name="consent_agree">Погоджуюсь</string>
+    <string name="legal_lang_anchor"></string>
+
+    <!-- Сервіс: помилки -->
+    <string name="err_fgs">Android не дозволив запуск: %s</string>
+    <string name="err_no_camera_perm">Немає дозволу на камеру</string>
+    <string name="err_no_camera">Камеру не знайдено</string>
+    <string name="err_disconnected_saved">Камеру забрала інша програма — запис збережено</string>
+    <string name="err_camera_busy">Камера зайнята іншою програмою</string>
+    <string name="err_camera_code">Помилка камери (%d)</string>
+    <string name="err_open">Не вдалося відкрити камеру: %s</string>
+    <string name="err_record_code">Помилка запису (%d)</string>
+    <string name="err_config">Камера не підтримує такий режим запису</string>
+    <string name="err_camera">Помилка камери: %s</string>
+    <string name="err_start">Не вдалося почати запис: %s</string>
+
+    <!-- Сервіс: сповіщення -->
+    <string name="ch_normal">Запис (звичайне)</string>
+    <string name="ch_normal_desc">Сповіщення під час запису з кнопкою «Стоп»</string>
+    <string name="ch_hidden">Запис (приховане)</string>
+    <string name="ch_hidden_desc">Мінімальне сповіщення без значка в рядку стану. Можна вимкнути повністю.</string>
+    <string name="ch_done">Готові записи</string>
+    <string name="ch_done_desc">Повідомлення, що відео збережено, з кнопкою «Поділитися»</string>
+    <string name="n_hidden_text">Відкрийте програму, щоб зупинити</string>
+    <string name="n_stop">Стоп</string>
+    <string name="n_stop_save">■  Стоп і зберегти</string>
+    <string name="n_rec_title">● Йде запис · %s</string>
+    <string name="n_rec_text_autostop">Автостоп через таймер. Натисніть «Стоп», щоб зберегти раніше</string>
+    <string name="n_rec_text">Натисніть «Стоп», щоб зберегти відео</string>
+    <string name="n_countdown_title">Запис почнеться за кілька секунд</string>
+    <string name="n_countdown_text">Можна перемикатися в іншу програму</string>
+    <string name="n_done_title">Відео збережено (%s)</string>
+    <string name="n_done_text">Галерея → Movies/FaceCam. Натисніть, щоб переглянути</string>
+    <string name="n_my_recordings">Мої записи</string>
+</resources>

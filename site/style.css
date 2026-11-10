@@ -118,3 +118,8 @@ footer a { color: var(--muted); }
 .legal table { table-layout: fixed; }
 .legal td, .legal th { overflow-wrap: anywhere; }
 @media (max-width: 520px) { .legal table { font-size: 13px; } .legal td, .legal th { padding: 8px 4px; } }
+
+/* QR for desktop visitors */
+.qr { display: none; align-items: center; gap: 16px; margin-top: 22px; color: var(--muted); font-size: 14px; }
+.qr img { width: 104px; height: 104px; background: #fff; border-radius: 12px; padding: 6px; }
+@media (min-width: 821px) { .qr { display: flex; } }

@@ -8,8 +8,17 @@
   <meta property="og:title" content="FaceCam — знімай себе, поки дивишся відео">
   <meta property="og:description" content="Запис фронталки у фоні для реакцій і роликів зі сценарієм. Один телефон — і камера, і екран.">
   <meta name="theme-color" content="#0f0f13">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="alternate" hreflang="uk" href="https://facecam-ua.vercel.app/">
+  <link rel="alternate" hreflang="en" href="https://facecam-ua.vercel.app/en">
+  <script>
+    try {
+      var saved = localStorage.getItem('lang');
+      var l = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+      if (saved === 'en' || (!saved && !/^(uk|ru)/i.test(l))) location.replace('/en' + location.hash);
+    } catch (e) {}
+  </script>
 </head>
 <body>
 
@@ -21,6 +30,7 @@
       <a class="hide-sm" href="#faq">Питання</a>
       <a href="/privacy">Приватність</a>
       <a href="/terms">Умови</a>
+      <a href="/en" hreflang="en" onclick="try{localStorage.setItem('lang','en')}catch(e){}">EN</a>
     </div>
   </div>
 </nav>
@@ -36,6 +46,7 @@
         <a class="btn btn-ghost" href="#how">Як це працює</a>
       </div>
       <p class="small">Безкоштовно · Android 10+ · Google Play — незабаром</p>
+      <div class="qr"><img src="/qr-uk.svg" alt="QR"><span>Ви на комп'ютері? Відскануйте камерою телефона, щоб відкрити сторінку там і встановити FaceCam.</span></div>
     </div>
     <div aria-hidden="true">
       <div class="phone">

@@ -98,9 +98,9 @@ public class MainActivity extends Activity {
         swAudio.setOnCheckedChangeListener((b, c) -> sp.edit().putBoolean("audio", c).apply());
 
         Spinner spDelay = findViewById(R.id.spDelay);
-        setupSpinner(spDelay, Prefs.DELAY_LABELS, p.delayIdx, i -> sp.edit().putInt("delay", i).apply());
+        setupSpinner(spDelay, getResources().getStringArray(R.array.delay_labels), p.delayIdx, i -> sp.edit().putInt("delay", i).apply());
         Spinner spAuto = findViewById(R.id.spAutoStop);
-        setupSpinner(spAuto, Prefs.AUTOSTOP_LABELS, p.autoStopIdx, i -> sp.edit().putInt("autostop", i).apply());
+        setupSpinner(spAuto, getResources().getStringArray(R.array.autostop_labels), p.autoStopIdx, i -> sp.edit().putInt("autostop", i).apply());
 
         Switch swHidden = findViewById(R.id.swHidden);
         View hiddenHint = findViewById(R.id.hiddenHint);
@@ -118,8 +118,8 @@ public class MainActivity extends Activity {
         settingViews = new View[]{rbFront, rbBack, rb1080, rb720, swAudio, spDelay, spAuto, swHidden};
         if (!BuildConfig.ALLOW_HIDDEN_NOTIFICATION) findViewById(R.id.hiddenSection).setVisibility(View.GONE);
 
-        findViewById(R.id.btnTerms).setOnClickListener(v -> openUrl(BuildConfig.SITE_URL + "/terms"));
-        findViewById(R.id.btnPrivacy).setOnClickListener(v -> openUrl(BuildConfig.SITE_URL + "/privacy"));
+        findViewById(R.id.btnTerms).setOnClickListener(v -> openUrl(legalUrl("terms")));
+        findViewById(R.id.btnPrivacy).setOnClickListener(v -> openUrl(legalUrl("privacy")));
         ((TextView) findViewById(R.id.version)).setText(getString(R.string.app_name) + " " + BuildConfig.VERSION_NAME);
 
         if (!Prefs.hasConsent(this)) showConsentDialog(false);
@@ -179,11 +179,11 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode != REQ_PERMS) return;
         if (!granted(Manifest.permission.CAMERA)) {
-            Toast.makeText(this, "Без дозволу на камеру запис неможливий", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.perm_camera_denied), Toast.LENGTH_LONG).show();
             return;
         }
         if (Prefs.load(this).audio && !granted(Manifest.permission.RECORD_AUDIO)) {
-            Toast.makeText(this, "Мікрофон не дозволено — запис буде без звуку", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.perm_mic_denied), Toast.LENGTH_LONG).show();
         }
         startRecording();
     }
@@ -197,13 +197,13 @@ public class MainActivity extends Activity {
         try {
             startForegroundService(i);
         } catch (Exception e) {
-            Toast.makeText(this, "Не вдалося запустити: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.start_failed, e.getMessage()), Toast.LENGTH_LONG).show();
             return;
         }
         Prefs p = Prefs.load(this);
         String msg = p.delaySec() > 0
-                ? "Запис почнеться через " + p.delaySec() + " с — можна переходити в іншу програму"
-                : "Запис пішов — можна переходити в іншу програму";
+                ? getString(R.string.started_delay, p.delaySec())
+                : getString(R.string.started_now);
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
@@ -218,19 +218,19 @@ public class MainActivity extends Activity {
 
         if (st == RecorderService.RECORDING) {
             long el = now - RecorderService.startedAtWall;
-            statusTitle.setText("● Йде запис");
+            statusTitle.setText(R.string.st_recording);
             statusTitle.setTextColor(getColor(R.color.accent));
             statusTime.setText(fmtDuration(el));
             long auto = RecorderService.autoStopAtWall;
-            statusSub.setText(auto > 0 ? "Автостоп через " + fmtDuration(Math.max(0, auto - now)) : "Без автостопу");
+            statusSub.setText(auto > 0 ? getString(R.string.st_autostop_in, fmtDuration(Math.max(0, auto - now))) : getString(R.string.st_no_autostop));
         } else if (st == RecorderService.COUNTDOWN) {
             long left = RecorderService.countdownUntilWall - now;
-            statusTitle.setText(left > 0 ? "Старт через" : "Запуск камери…");
+            statusTitle.setText(left > 0 ? R.string.st_starts_in : R.string.st_starting_camera);
             statusTitle.setTextColor(statusSub.getCurrentTextColor());
             statusTime.setText(left > 0 ? String.valueOf((left + 999) / 1000) : "…");
-            statusSub.setText("Переходьте в Instagram чи сценарій");
+            statusSub.setText(R.string.st_countdown_hint);
         } else if (st == RecorderService.FINISHING) {
-            statusTitle.setText("Зберігаю відео…");
+            statusTitle.setText(R.string.st_saving);
             statusSub.setText("");
         }
 
@@ -239,24 +239,25 @@ public class MainActivity extends Activity {
         lastState = st;
 
         boolean idle = st == RecorderService.IDLE;
-        btnRec.setText(idle ? "●  Почати запис" : "■  Зупинити і зберегти");
+        btnRec.setText(idle ? R.string.btn_start : R.string.btn_stop);
         btnRec.setBackgroundResource(idle ? R.drawable.btn_rec : R.drawable.btn_stop);
         btnRec.setEnabled(st != RecorderService.FINISHING);
         for (View v : settingViews) v.setEnabled(idle);
 
         if (idle) {
-            statusTitle.setText("Готово до запису");
+            statusTitle.setText(R.string.status_ready);
             statusTitle.setTextColor(statusSub.getCurrentTextColor());
             statusTime.setText("00:00");
             Prefs p = Prefs.load(this);
-            statusSub.setText((p.front ? "Фронтальна" : "Основна") + " · " + (p.hd1080 ? "1080p" : "720p")
-                    + (p.audio ? " · зі звуком" : " · без звуку"));
+            statusSub.setText(getString(p.front ? R.string.cam_front : R.string.cam_back) + " · "
+                    + (p.hd1080 ? "1080p" : "720p") + " · "
+                    + getString(p.audio ? R.string.with_sound : R.string.no_sound));
             if (prev != -1 && prev != RecorderService.IDLE) {
                 loadRecordings();
                 String err = RecorderService.lastError;
                 if (err != null) Toast.makeText(this, err, Toast.LENGTH_LONG).show();
                 else if (RecorderService.lastSavedUri != null)
-                    Toast.makeText(this, "Відео збережено в галерею", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.toast_saved, Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -287,8 +288,8 @@ public class MainActivity extends Activity {
 
         LinearLayout links = new LinearLayout(this);
         links.setOrientation(LinearLayout.HORIZONTAL);
-        links.addView(linkButton("Умови використання", BuildConfig.SITE_URL + "/terms"));
-        links.addView(linkButton("Конфіденційність", BuildConfig.SITE_URL + "/privacy"));
+        links.addView(linkButton(getString(R.string.terms), legalUrl("terms")));
+        links.addView(linkButton(getString(R.string.privacy), legalUrl("privacy")));
         box.addView(links);
 
         ScrollView sv = new ScrollView(this);
@@ -298,8 +299,8 @@ public class MainActivity extends Activity {
                 .setTitle(R.string.consent_title)
                 .setView(sv)
                 .setCancelable(false)
-                .setNegativeButton("Вийти", (di, w) -> finish())
-                .setPositiveButton("Погоджуюсь", (di, w) -> {
+                .setNegativeButton(R.string.consent_exit, (di, w) -> finish())
+                .setPositiveButton(R.string.consent_agree, (di, w) -> {
                     Prefs.setConsent(this);
                     if (startAfter) startWithPermissions();
                 })
@@ -319,6 +320,10 @@ public class MainActivity extends Activity {
         b.setTextColor(getColor(R.color.accent));
         b.setOnClickListener(v -> openUrl(url));
         return b;
+    }
+
+    private String legalUrl(String page) {
+        return BuildConfig.SITE_URL + "/" + page + getString(R.string.legal_lang_anchor);
     }
 
     private void openUrl(String url) {
@@ -342,8 +347,7 @@ public class MainActivity extends Activity {
                 .putExtra(Settings.EXTRA_CHANNEL_ID, RecorderService.CH_HIDDEN);
         try {
             startActivity(i);
-            Toast.makeText(this, "Вимкніть перемикач «Запис (приховане)». Запис усе одно працюватиме",
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.channel_settings_toast, Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                     .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
@@ -381,7 +385,7 @@ public class MainActivity extends Activity {
         list.removeAllViews();
         emptyList.setVisibility(recs.isEmpty() ? View.VISIBLE : View.GONE);
         LayoutInflater inf = LayoutInflater.from(this);
-        SimpleDateFormat df = new SimpleDateFormat("d MMM, HH:mm", new Locale("uk"));
+        SimpleDateFormat df = new SimpleDateFormat("d MMM, HH:mm", Locale.getDefault());
         for (Rec r : recs) {
             View row = inf.inflate(R.layout.item_recording, list, false);
             ((TextView) row.findViewById(R.id.itemTitle)).setText(df.format(new Date(r.dateSec * 1000)));
@@ -398,7 +402,7 @@ public class MainActivity extends Activity {
         Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "video/mp4")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try { startActivity(i); } catch (Exception e) {
-            Toast.makeText(this, "Немає програми для перегляду відео", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.no_player, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -407,17 +411,17 @@ public class MainActivity extends Activity {
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         send.setClipData(ClipData.newRawUri("video", uri));
-        startActivity(Intent.createChooser(send, "Поділитися відео"));
+        startActivity(Intent.createChooser(send, getString(R.string.share_title)));
     }
 
     private Uri pendingDelete;
 
     private void confirmDelete(Rec r) {
         new AlertDialog.Builder(this)
-                .setTitle("Видалити запис?")
+                .setTitle(R.string.delete_title)
                 .setMessage(r.name)
-                .setNegativeButton("Скасувати", null)
-                .setPositiveButton("Видалити", (d, w) -> delete(r.uri))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (d, w) -> delete(r.uri))
                 .show();
     }
 
@@ -437,7 +441,7 @@ public class MainActivity extends Activity {
                             .getActionIntent().getIntentSender(), REQ_DELETE, null, 0, 0, 0);
                 }
             } catch (Exception e) {
-                Toast.makeText(this, "Не вдалося видалити", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.delete_failed, Toast.LENGTH_SHORT).show();
             }
         }
     }

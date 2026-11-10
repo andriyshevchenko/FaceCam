@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches: [main]
-    tags: ['v*']
     paths-ignore: ['site/**', '**.md']
   workflow_dispatch:
 
@@ -32,13 +31,10 @@ jobs:
           SIGNING_KEY: ${{ secrets.FACECAM_SIGNING_KEY }}
         run: |
           if [ -z "$SIGNING_KEY" ]; then
-            echo "::warning::Secret FACECAM_SIGNING_KEY is missing - building with debug key"
-            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-              echo "::error::Releases must be signed. Add the FACECAM_SIGNING_KEY secret."
-              exit 1
-            fi
+            echo "::warning::Secret FACECAM_SIGNING_KEY is missing - debug-signed build, no release"
             exit 0
           fi
+          echo "SIGNED=1" >> "$GITHUB_ENV"
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
             -in signing/upload.jks.enc -out "$RUNNER_TEMP/upload.jks" -pass env:SIGNING_KEY
           echo "FACECAM_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
@@ -61,10 +57,25 @@ jobs:
           name: FaceCam-${{ github.sha }}
           path: out/*
 
+      # Новий versionName у app/build.gradle -> автоматичний реліз v<версія>
+      - name: Check if this version is already released
+        id: ver
+        run: |
+          VER=$(grep -oP "versionName '\K[^']+" app/build.gradle)
+          echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VER" >/dev/null; then
+            echo "new=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.SIGNED == '1' && steps.ver.outputs.new == '1' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: FaceCam ${{ steps.ver.outputs.tag }}
           files: |
             out/FaceCam.apk
             out/FaceCam.aab

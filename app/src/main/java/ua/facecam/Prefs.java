@@ -6,10 +6,8 @@ import android.content.SharedPreferences;
 /** Налаштування запису. */
 final class Prefs {
     static final int[] DELAYS_SEC = {0, 3, 5, 10};
-    static final String[] DELAY_LABELS = {"Без затримки", "3 секунди", "5 секунд", "10 секунд"};
 
     static final int[] AUTOSTOP_MIN = {0, 1, 3, 5, 10, 15, 30, 60};
-    static final String[] AUTOSTOP_LABELS = {"Вимкнено", "1 хв", "3 хв", "5 хв", "10 хв", "15 хв", "30 хв", "60 хв"};
 
     final boolean front;
     final boolean hd1080;

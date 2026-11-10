@@ -23,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:alpha="0.7"
-            android:text="Запис камери у фоні, поки ви в інших програмах"
+            android:text="@string/tagline"
             android:textSize="14sp" />
 
         <!-- Статус -->
@@ -41,7 +41,7 @@
                 android:id="@+id/statusTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Готово до запису"
+                android:text="@string/status_ready"
                 android:textSize="16sp" />
 
             <TextView
@@ -69,7 +69,7 @@
                 android:layout_height="64dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/btn_rec"
-                android:text="●  Почати запис"
+                android:text="@string/btn_start"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
@@ -79,7 +79,7 @@
         <!-- Налаштування -->
         <TextView
             style="@style/Section"
-            android:text="Камера" />
+            android:text="@string/section_camera" />
 
         <RadioGroup
             android:id="@+id/rgCamera"
@@ -92,14 +92,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Фронтальна" />
+                android:text="@string/cam_front" />
 
             <RadioButton
                 android:id="@+id/rbBack"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Основна" />
+                android:text="@string/cam_back" />
         </RadioGroup>
 
         <RadioGroup
@@ -120,7 +120,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="720p (менші файли)" />
+                android:text="@string/q_720" />
         </RadioGroup>
 
         <Switch
@@ -128,15 +128,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
-            android:text="Записувати звук з мікрофона" />
+            android:text="@string/audio_switch" />
 
         <TextView
             style="@style/Section"
-            android:text="Таймер" />
+            android:text="@string/section_timer" />
 
         <TextView
             style="@style/Label"
-            android:text="Затримка перед стартом (встигнути перейти в Instagram)" />
+            android:text="@string/delay_label" />
 
         <Spinner
             android:id="@+id/spDelay"
@@ -145,7 +145,7 @@
 
         <TextView
             style="@style/Label"
-            android:text="Автоматично зупинити через" />
+            android:text="@string/autostop_label" />
 
         <Spinner
             android:id="@+id/spAutoStop"
@@ -160,38 +160,38 @@
 
         <TextView
             style="@style/Section"
-            android:text="Сповіщення" />
+            android:text="@string/section_notif" />
 
         <Switch
             android:id="@+id/swHidden"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
-            android:text="Приховати сповіщення під час запису" />
+            android:text="@string/hidden_switch" />
 
         <TextView
             android:id="@+id/hiddenHint"
             style="@style/Label"
-            android:text="Сповіщення стане непомітним: без значка вгорі, згорнуте внизу шторки, його можна змахнути. Зупинити запис — тут, у програмі. Зелена точка камери Android залишиться — її жодна програма прибрати не може." />
+            android:text="@string/hidden_hint" />
 
         <Button
             android:id="@+id/btnChannel"
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Вимкнути це сповіщення повністю →"
+            android:text="@string/hidden_disable"
             android:textAllCaps="false" />
         </LinearLayout>
 
         <!-- Записи -->
         <TextView
             style="@style/Section"
-            android:text="Мої записи" />
+            android:text="@string/section_recordings" />
 
         <TextView
             android:id="@+id/emptyList"
             style="@style/Label"
-            android:text="Поки що немає записів. Відео зберігаються в галерею: Movies/FaceCam" />
+            android:text="@string/empty_list" />
 
         <LinearLayout
             android:id="@+id/list"
@@ -218,7 +218,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:alpha="0.75"
-                    android:text="Умови використання"
+                    android:text="@string/terms"
                     android:textAllCaps="false"
                     android:textSize="13sp" />
 
@@ -228,7 +228,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:alpha="0.75"
-                    android:text="Конфіденційність"
+                    android:text="@string/privacy"
                     android:textAllCaps="false"
                     android:textSize="13sp" />
             </LinearLayout>
