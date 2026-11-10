@@ -26,9 +26,11 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -114,6 +116,13 @@ public class MainActivity extends Activity {
         btnChannel.setOnClickListener(v -> openHiddenChannelSettings());
 
         settingViews = new View[]{rbFront, rbBack, rb1080, rb720, swAudio, spDelay, spAuto, swHidden};
+        if (!BuildConfig.ALLOW_HIDDEN_NOTIFICATION) findViewById(R.id.hiddenSection).setVisibility(View.GONE);
+
+        findViewById(R.id.btnTerms).setOnClickListener(v -> openUrl(BuildConfig.SITE_URL + "/terms"));
+        findViewById(R.id.btnPrivacy).setOnClickListener(v -> openUrl(BuildConfig.SITE_URL + "/privacy"));
+        ((TextView) findViewById(R.id.version)).setText(getString(R.string.app_name) + " " + BuildConfig.VERSION_NAME);
+
+        if (!Prefs.hasConsent(this)) showConsentDialog(false);
 
         btnRec.setOnClickListener(v -> {
             if (RecorderService.state == RecorderService.IDLE) startWithPermissions();
@@ -153,6 +162,7 @@ public class MainActivity extends Activity {
     // ---------------------------------------------------------------- запис
 
     private void startWithPermissions() {
+        if (!Prefs.hasConsent(this)) { showConsentDialog(true); return; }
         Prefs p = Prefs.load(this);
         List<String> need = new ArrayList<>();
         if (!granted(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA);
@@ -248,6 +258,74 @@ public class MainActivity extends Activity {
                 else if (RecorderService.lastSavedUri != null)
                     Toast.makeText(this, "Відео збережено в галерею", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    // ---------------------------------------------------------------- згода
+
+    private void showConsentDialog(boolean startAfter) {
+        float dp = getResources().getDisplayMetrics().density;
+        int pad = (int) (22 * dp);
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, (int) (8 * dp), pad, 0);
+
+        TextView body = new TextView(this);
+        body.setTextSize(15);
+        body.setLineSpacing(0, 1.15f);
+        body.setText(getString(R.string.consent_body));
+        box.addView(body);
+
+        CheckBox cb = new CheckBox(this);
+        cb.setText(R.string.consent_check);
+        cb.setPadding(0, (int) (6 * dp), 0, (int) (6 * dp));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = (int) (14 * dp);
+        box.addView(cb, lp);
+
+        LinearLayout links = new LinearLayout(this);
+        links.setOrientation(LinearLayout.HORIZONTAL);
+        links.addView(linkButton("Умови використання", BuildConfig.SITE_URL + "/terms"));
+        links.addView(linkButton("Конфіденційність", BuildConfig.SITE_URL + "/privacy"));
+        box.addView(links);
+
+        ScrollView sv = new ScrollView(this);
+        sv.addView(box);
+
+        AlertDialog d = new AlertDialog.Builder(this)
+                .setTitle(R.string.consent_title)
+                .setView(sv)
+                .setCancelable(false)
+                .setNegativeButton("Вийти", (di, w) -> finish())
+                .setPositiveButton("Погоджуюсь", (di, w) -> {
+                    Prefs.setConsent(this);
+                    if (startAfter) startWithPermissions();
+                })
+                .create();
+        d.setOnShowListener(di -> {
+            Button ok = d.getButton(AlertDialog.BUTTON_POSITIVE);
+            ok.setEnabled(false);
+            cb.setOnCheckedChangeListener((b, c) -> ok.setEnabled(c));
+        });
+        d.show();
+    }
+
+    private Button linkButton(String text, String url) {
+        Button b = new Button(this, null, android.R.attr.borderlessButtonStyle);
+        b.setText(text);
+        b.setAllCaps(false);
+        b.setTextColor(getColor(R.color.accent));
+        b.setOnClickListener(v -> openUrl(url));
+        return b;
+    }
+
+    private void openUrl(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception e) {
+            Toast.makeText(this, url, Toast.LENGTH_LONG).show();
         }
     }
 

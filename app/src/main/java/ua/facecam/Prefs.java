@@ -22,7 +22,7 @@ final class Prefs {
         front = p.getBoolean("front", true);
         hd1080 = p.getBoolean("hd1080", true);
         audio = p.getBoolean("audio", true);
-        hiddenNotif = p.getBoolean("hidden", false);
+        hiddenNotif = BuildConfig.ALLOW_HIDDEN_NOTIFICATION && p.getBoolean("hidden", false);
         delayIdx = clamp(p.getInt("delay", 0), DELAYS_SEC.length);
         autoStopIdx = clamp(p.getInt("autostop", 0), AUTOSTOP_MIN.length);
     }
@@ -31,6 +31,11 @@ final class Prefs {
     int autoStopMin() { return AUTOSTOP_MIN[autoStopIdx]; }
 
     static Prefs load(Context c) { return new Prefs(sp(c)); }
+
+    static final int CONSENT_VERSION = 1;
+
+    static boolean hasConsent(Context c) { return sp(c).getInt("consent", 0) >= CONSENT_VERSION; }
+    static void setConsent(Context c) { sp(c).edit().putInt("consent", CONSENT_VERSION).apply(); }
 
     static SharedPreferences sp(Context c) {
         return c.getSharedPreferences("facecam", Context.MODE_PRIVATE);

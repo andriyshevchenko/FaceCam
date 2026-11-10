@@ -1,30 +1,58 @@
 plugins { id 'com.android.application' }
 
+// Ключ підпису береться зі змінних середовища (у GitHub Actions — із секрету).
+// Без них release-збірка підписується debug-ключем: зручно для локальних тестів.
+def ksPath = System.getenv('FACECAM_KEYSTORE')
+def ksPass = System.getenv('FACECAM_KEY_PASSWORD')
+def hasUploadKey = ksPath && ksPass && file(ksPath).exists()
+
 android {
     namespace 'ua.facecam'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'ua.facecam'
         minSdk 29
-        targetSdk 34
-        versionCode 1
-        versionName '1.0'
+        targetSdk 36
+        versionCode 2
+        versionName '1.1.0'
+        buildConfigField 'String', 'SITE_URL', '"https://facecam-app.vercel.app"'
+    }
+
+    buildFeatures { buildConfig true }
+
+    flavorDimensions += 'dist'
+    productFlavors {
+        // Версія для Google Play: сповіщення під час запису завжди видно.
+        play {
+            dimension 'dist'
+            buildConfigField 'boolean', 'ALLOW_HIDDEN_NOTIFICATION', 'false'
+            resValue 'string', 'app_name', 'FaceCam'
+        }
+        // Особиста APK: додатково є режим прихованого сповіщення.
+        personal {
+            dimension 'dist'
+            applicationIdSuffix '.personal'
+            buildConfigField 'boolean', 'ALLOW_HIDDEN_NOTIFICATION', 'true'
+            resValue 'string', 'app_name', 'FaceCam Personal'
+        }
     }
 
     signingConfigs {
-        rel {
-            storeFile file('facecam.jks')
-            storePassword 'facecam123'
-            keyAlias 'facecam'
-            keyPassword 'facecam123'
+        upload {
+            if (hasUploadKey) {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias 'upload'
+                keyPassword ksPass
+            }
         }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.rel
+            signingConfig hasUploadKey ? signingConfigs.upload : signingConfigs.debug
         }
     }
 

@@ -152,6 +152,12 @@
             android:layout_width="match_parent"
             android:layout_height="48dp" />
 
+        <LinearLayout
+            android:id="@+id/hiddenSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
         <TextView
             style="@style/Section"
             android:text="Сповіщення" />
@@ -175,6 +181,7 @@
             android:layout_height="wrap_content"
             android:text="Вимкнути це сповіщення повністю →"
             android:textAllCaps="false" />
+        </LinearLayout>
 
         <!-- Записи -->
         <TextView
@@ -191,5 +198,47 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
+
+        <!-- Юридичне -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnTerms"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.75"
+                    android:text="Умови використання"
+                    android:textAllCaps="false"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnPrivacy"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.75"
+                    android:text="Конфіденційність"
+                    android:textAllCaps="false"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/version"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.5"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>
