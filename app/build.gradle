@@ -16,7 +16,7 @@ android {
         targetSdk 36
         versionCode 2
         versionName '1.1.0'
-        buildConfigField 'String', 'SITE_URL', '"https://facecam-app.vercel.app"'
+        buildConfigField 'String', 'SITE_URL', '"https://facecam-ua.vercel.app"'
     }
 
     buildFeatures { buildConfig true }

@@ -2,7 +2,7 @@
 
 Android-програма для блогерів: записує фронтальну камеру у фоні, поки ви в Instagram, TikTok чи читаєте сценарій. Прев'ю камери не перекриває екран — лише сповіщення з кнопкою «Стоп».
 
-**Сайт:** лендінг, [Політика конфіденційності](site/privacy.html) і [Умови використання](site/terms.html) лежать у папці `site/` і деплояться на Vercel.
+**Сайт:** https://facecam-ua.vercel.app — лендінг, [Політика конфіденційності](site/privacy.html) і [Умови використання](site/terms.html) лежать у папці `site/` і деплояться на Vercel.
 
 ## Можливості
 
@@ -48,7 +48,7 @@ export FACECAM_KEYSTORE=/tmp/upload.jks
 ## Публікація в Google Play — чекліст
 
 - [ ] Увімкнути Play App Signing і завантажити `FaceCam.aab`.
-- [ ] Privacy Policy URL: `<сайт>/privacy`.
+- [ ] Privacy Policy URL: https://facecam-ua.vercel.app/privacy.
 - [ ] Data safety: дані не збираються й не передаються.
 - [ ] App content → Foreground service permissions: тип **camera** (і microphone), сценарій «Background camera streaming / recording», відео: користувач натискає «Почати запис», переходить в іншу програму, видно сповіщення з кнопкою «Стоп».
 - [ ] Новий особистий акаунт: закритий тест з 12 тестувальниками протягом 14 днів.
