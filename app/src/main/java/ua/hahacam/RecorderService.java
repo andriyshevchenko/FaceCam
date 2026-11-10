@@ -1,4 +1,4 @@
-package ua.facecam;
+package ua.hahacam;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -52,8 +52,8 @@ import java.util.concurrent.Executor;
  */
 public class RecorderService extends Service {
 
-    static final String ACTION_START = "ua.facecam.START";
-    static final String ACTION_STOP = "ua.facecam.STOP";
+    static final String ACTION_START = "ua.hahacam.START";
+    static final String ACTION_STOP = "ua.hahacam.STOP";
 
     static final String CH_NORMAL = "rec_normal";
     static final String CH_HIDDEN = "rec_hidden";
@@ -89,7 +89,7 @@ public class RecorderService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        thread = new HandlerThread("FaceCamRec");
+        thread = new HandlerThread("HahacamRec");
         thread.start();
         bg = new Handler(thread.getLooper());
         createChannels(this);
@@ -152,7 +152,7 @@ public class RecorderService extends Service {
         }
 
         PowerManager pm = getSystemService(PowerManager.class);
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FaceCam:rec");
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Hahacam:rec");
         wakeLock.setReferenceCounted(false);
         wakeLock.acquire(4 * 60 * 60 * 1000L);
 
@@ -214,12 +214,12 @@ public class RecorderService extends Service {
         StreamConfigurationMap map = ch.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
         Size size = chooseSize(map.getOutputSizes(MediaRecorder.class), prefs.hd1080 ? 1080 : 720);
 
-        // Файл одразу в галерею: Movies/FaceCam
-        String name = "FaceCam_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".mp4";
+        // Файл одразу в галерею: Movies/Hahacam
+        String name = "Hahacam_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".mp4";
         ContentValues v = new ContentValues();
         v.put(MediaStore.Video.Media.DISPLAY_NAME, name);
         v.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
-        v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/FaceCam");
+        v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Hahacam");
         v.put(MediaStore.Video.Media.IS_PENDING, 1);
         ContentResolver cr = getContentResolver();
         outUri = cr.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);

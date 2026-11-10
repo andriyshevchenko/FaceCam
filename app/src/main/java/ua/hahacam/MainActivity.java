@@ -1,4 +1,4 @@
-package ua.facecam;
+package ua.hahacam;
 
 import android.Manifest;
 import android.app.Activity;
@@ -366,7 +366,7 @@ public class MainActivity extends Activity {
         String[] proj = {MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME,
                 MediaStore.Video.Media.DURATION, MediaStore.Video.Media.SIZE, MediaStore.Video.Media.DATE_ADDED};
         String sel = MediaStore.Video.Media.RELATIVE_PATH + " LIKE ?";
-        String[] args = {"Movies/FaceCam%"};
+        String[] args = {"Movies/Hahacam%"};
         try (Cursor c = getContentResolver().query(coll, proj, sel, args,
                 MediaStore.Video.Media.DATE_ADDED + " DESC")) {
             if (c != null) {

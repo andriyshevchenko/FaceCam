@@ -1,4 +1,4 @@
-package ua.facecam;
+package ua.hahacam;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -36,7 +36,7 @@ final class Prefs {
     static void setConsent(Context c) { sp(c).edit().putInt("consent", CONSENT_VERSION).apply(); }
 
     static SharedPreferences sp(Context c) {
-        return c.getSharedPreferences("facecam", Context.MODE_PRIVATE);
+        return c.getSharedPreferences("hahacam", Context.MODE_PRIVATE);
     }
 
     private static int clamp(int v, int len) { return v < 0 || v >= len ? 0 : v; }

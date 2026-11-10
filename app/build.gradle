@@ -2,21 +2,21 @@ plugins { id 'com.android.application' }
 
 // Ключ підпису береться зі змінних середовища (у GitHub Actions — із секрету).
 // Без них release-збірка підписується debug-ключем: зручно для локальних тестів.
-def ksPath = System.getenv('FACECAM_KEYSTORE')
-def ksPass = System.getenv('FACECAM_KEY_PASSWORD')
+def ksPath = System.getenv('HAHACAM_KEYSTORE')
+def ksPass = System.getenv('HAHACAM_KEY_PASSWORD')
 def hasUploadKey = ksPath && ksPass && file(ksPath).exists()
 
 android {
-    namespace 'ua.facecam'
+    namespace 'ua.hahacam'
     compileSdk 36
 
     defaultConfig {
-        applicationId 'ua.facecam'
+        applicationId 'ua.hahacam'
         minSdk 29
         targetSdk 36
         versionCode 3
         versionName '1.2.0'
-        buildConfigField 'String', 'SITE_URL', '"https://facecam-ua.vercel.app"'
+        buildConfigField 'String', 'SITE_URL', '"https://hahacam.vercel.app"'
     }
 
     buildFeatures { buildConfig true }
@@ -27,14 +27,14 @@ android {
         play {
             dimension 'dist'
             buildConfigField 'boolean', 'ALLOW_HIDDEN_NOTIFICATION', 'false'
-            resValue 'string', 'app_name', 'FaceCam'
+            resValue 'string', 'app_name', 'Hahacam'
         }
         // Особиста APK: додатково є режим прихованого сповіщення.
         personal {
             dimension 'dist'
             applicationIdSuffix '.personal'
             buildConfigField 'boolean', 'ALLOW_HIDDEN_NOTIFICATION', 'true'
-            resValue 'string', 'app_name', 'FaceCam Personal'
+            resValue 'string', 'app_name', 'Hahacam Personal'
         }
     }
 

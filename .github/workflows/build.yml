@@ -28,18 +28,18 @@ jobs:
 
       - name: Decrypt upload key
         env:
-          SIGNING_KEY: ${{ secrets.FACECAM_SIGNING_KEY }}
+          SIGNING_KEY: ${{ secrets.HAHACAM_SIGNING_KEY }}
         run: |
           if [ -z "$SIGNING_KEY" ]; then
-            echo "::warning::Secret FACECAM_SIGNING_KEY is missing - debug-signed build, no release"
+            echo "::warning::Secret HAHACAM_SIGNING_KEY is missing - debug-signed build, no release"
             exit 0
           fi
           echo "SIGNED=1" >> "$GITHUB_ENV"
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
             -in signing/upload.jks.enc -out "$RUNNER_TEMP/upload.jks" -pass env:SIGNING_KEY
-          echo "FACECAM_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "HAHACAM_KEYSTORE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
           echo "::add-mask::$SIGNING_KEY"
-          echo "FACECAM_KEY_PASSWORD=$SIGNING_KEY" >> "$GITHUB_ENV"
+          echo "HAHACAM_KEY_PASSWORD=$SIGNING_KEY" >> "$GITHUB_ENV"
 
       - name: Build APKs and Play bundle
         run: ./gradlew --no-daemon assemblePlayRelease assemblePersonalRelease bundlePlayRelease
@@ -47,14 +47,14 @@ jobs:
       - name: Collect outputs
         run: |
           mkdir out
-          cp app/build/outputs/apk/play/release/app-play-release.apk out/FaceCam.apk
-          cp app/build/outputs/apk/personal/release/app-personal-release.apk out/FaceCam-Personal.apk
-          cp app/build/outputs/bundle/playRelease/app-play-release.aab out/FaceCam.aab
+          cp app/build/outputs/apk/play/release/app-play-release.apk out/Hahacam.apk
+          cp app/build/outputs/apk/personal/release/app-personal-release.apk out/Hahacam-Personal.apk
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab out/Hahacam.aab
           rm -f "$RUNNER_TEMP/upload.jks"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: FaceCam-${{ github.sha }}
+          name: Hahacam-${{ github.sha }}
           path: out/*
 
       # Новий versionName у app/build.gradle -> автоматичний реліз v<версія>
@@ -75,8 +75,8 @@ jobs:
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: FaceCam ${{ steps.ver.outputs.tag }}
+          name: Hahacam ${{ steps.ver.outputs.tag }}
           files: |
-            out/FaceCam.apk
-            out/FaceCam.aab
+            out/Hahacam.apk
+            out/Hahacam.aab
           generate_release_notes: true

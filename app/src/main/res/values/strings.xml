@@ -21,7 +21,7 @@
     <string name="hidden_hint">The notification becomes unobtrusive: no icon in the status bar, collapsed at the bottom of the shade, and you can swipe it away. Stop recording here in the app. Android\'s green camera dot stays — no app can remove it.</string>
     <string name="hidden_disable">Turn this notification off completely →</string>
     <string name="section_recordings">My recordings</string>
-    <string name="empty_list">No recordings yet. Videos are saved to your gallery: Movies/FaceCam</string>
+    <string name="empty_list">No recordings yet. Videos are saved to your gallery: Movies/Hahacam</string>
     <string name="terms">Terms of Use</string>
     <string name="privacy">Privacy</string>
     <string name="share">Share</string>
@@ -71,7 +71,7 @@
 
     <!-- Consent -->
     <string name="consent_title">Before you start</string>
-    <string name="consent_body">FaceCam records camera video and microphone audio after you tap “Start recording” — even when you switch to another app or lock the screen. While recording, a notification with a “Stop” button is shown in the notification shade.\n\nVideos are stored only on your phone and are never sent anywhere.\n\nBy agreeing, you confirm that you understand:\n• other people may accidentally appear in the frame — don\'t film them without consent;\n• recording continues in the background and with the screen locked until you stop it;\n• you are responsible for your recordings and how you use them.</string>
+    <string name="consent_body">Hahacam records camera video and microphone audio after you tap “Start recording” — even when you switch to another app or lock the screen. While recording, a notification with a “Stop” button is shown in the notification shade.\n\nVideos are stored only on your phone and are never sent anywhere.\n\nBy agreeing, you confirm that you understand:\n• other people may accidentally appear in the frame — don\'t film them without consent;\n• recording continues in the background and with the screen locked until you stop it;\n• you are responsible for your recordings and how you use them.</string>
     <string name="consent_check">I have read and agree to the Terms of Use and Privacy Policy</string>
     <string name="consent_exit">Exit</string>
     <string name="consent_agree">I agree</string>
@@ -106,6 +106,6 @@
     <string name="n_countdown_title">Recording starts in a few seconds</string>
     <string name="n_countdown_text">You can switch to another app</string>
     <string name="n_done_title">Video saved (%s)</string>
-    <string name="n_done_text">Gallery → Movies/FaceCam. Tap to watch</string>
+    <string name="n_done_text">Gallery → Movies/Hahacam. Tap to watch</string>
     <string name="n_my_recordings">My recordings</string>
 </resources>
