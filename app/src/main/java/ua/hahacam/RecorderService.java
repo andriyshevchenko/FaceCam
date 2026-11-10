@@ -25,6 +25,8 @@ import android.hardware.camera2.params.SessionConfiguration;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.hardware.display.DisplayManager;
 import android.media.MediaRecorder;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -40,6 +42,11 @@ import android.util.Size;
 import android.view.Display;
 import android.view.Surface;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -54,6 +61,10 @@ public class RecorderService extends Service {
 
     static final String ACTION_START = "ua.hahacam.START";
     static final String ACTION_STOP = "ua.hahacam.STOP";
+    static final String EXTRA_SRC = "src";          // "app" | "notif" | "cancel"
+
+    /** Поточний екземпляр (для передачі дозволу на запис екрана з активності). */
+    static volatile RecorderService instance;
 
     static final String CH_NORMAL = "rec_normal";
     static final String CH_HIDDEN = "rec_hidden";
@@ -79,8 +90,9 @@ public class RecorderService extends Service {
     private CameraCaptureSession session;
     private MediaRecorder recorder;
     private Surface recorderSurface;
-    private ParcelFileDescriptor pfd;
-    private Uri outUri;
+    private File tmpFile;
+    private ScreenSession screen;
+    private int fgsTypes;
     private PowerManager.WakeLock wakeLock;
     private boolean recorderStarted;
     private boolean stopping;
@@ -93,6 +105,7 @@ public class RecorderService extends Service {
         thread.start();
         bg = new Handler(thread.getLooper());
         createChannels(this);
+        instance = this;
     }
 
     @Override
@@ -102,7 +115,11 @@ public class RecorderService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action)) {
-            if (state == IDLE) { stopSelf(); } else { bg.post(() -> stopInternal(null)); }
+            String src = intent.getStringExtra(EXTRA_SRC);
+            Session.StopSource ss = "app".equals(src) ? Session.StopSource.APP
+                    : "notif".equals(src) ? Session.StopSource.NOTIFICATION : Session.StopSource.AUTO;
+            boolean discard = "cancel".equals(src);
+            if (state == IDLE) { stopSelf(); } else { bg.post(() -> stopInternal(null, ss, discard)); }
             return START_NOT_STICKY;
         }
         if (ACTION_START.equals(action)) {
@@ -133,22 +150,20 @@ public class RecorderService extends Service {
         cleaned = false;
 
         // Android вимагає показати сповіщення одразу після старту сервісу.
+        // Камеру й мікрофон заявляємо зараз, поки програма на екрані (так вимагає Android 14+).
         Notification n = buildRecordingNotification();
-        if (Build.VERSION.SDK_INT >= 30) {
-            int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
-            if (prefs.audio && hasPerm(Manifest.permission.RECORD_AUDIO)) {
-                type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
-            }
-            try {
-                startForeground(NOTIF_ID, n, type);
-            } catch (RuntimeException e) {
-                lastError = getString(R.string.err_fgs, e.getMessage());
-                state = IDLE;
-                stopSelf();
-                return;
-            }
-        } else {
-            startForeground(NOTIF_ID, n);
+        int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+        if ((prefs.audio || (prefs.screen() && prefs.appAudio)) && hasPerm(Manifest.permission.RECORD_AUDIO)) {
+            type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+        }
+        fgsTypes = type;
+        try {
+            startFg(n, type);
+        } catch (RuntimeException e) {
+            lastError = getString(R.string.err_fgs, e.getMessage());
+            state = IDLE;
+            stopSelf();
+            return;
         }
 
         PowerManager pm = getSystemService(PowerManager.class);
@@ -156,7 +171,87 @@ public class RecorderService extends Service {
         wakeLock.setReferenceCounted(false);
         wakeLock.acquire(4 * 60 * 60 * 1000L);
 
+        tmpFile = newTempFile();
+        if (prefs.screen()) {
+            // Чекаємо, поки користувач дозволить запис екрана (onProjectionGranted).
+            bg.postDelayed(() -> { if (state == COUNTDOWN && screen == null) stopInternal(null, Session.StopSource.AUTO, true); }, 120_000);
+            return;
+        }
         bg.postDelayed(this::openCamera, delay * 1000L);
+    }
+
+    /** На Android 10 типів camera/microphone ще немає — там лише mediaProjection або без типу. */
+    private void startFg(Notification n, int types) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            startForeground(NOTIF_ID, n, types);
+        } else if ((types & ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION) != 0) {
+            startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        } else {
+            startForeground(NOTIF_ID, n);
+        }
+    }
+
+    private File newTempFile() {
+        File dir = getExternalCacheDir() != null ? getExternalCacheDir() : getCacheDir();
+        return new File(dir, "rec_" + System.currentTimeMillis() + ".mp4");
+    }
+
+    // ---------------------------------------------------------------- режим «екран + я»
+
+    /** Викликає MainActivity після того, як користувач дозволив запис екрана. */
+    void onProjectionGranted(int resultCode, Intent data, int w, int h, int dpi) {
+        if (state != COUNTDOWN || prefs == null || !prefs.screen()) return;
+        try {
+            // Спершу оголошуємо тип mediaProjection, і лише потім беремо MediaProjection (вимога Android 14+).
+            fgsTypes |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+            startFg(buildRecordingNotification(), fgsTypes);
+            MediaProjection mp = getSystemService(MediaProjectionManager.class).getMediaProjection(resultCode, data);
+            if (mp == null) throw new IllegalStateException("no projection");
+            bg.post(() -> startScreen(mp, w, h, dpi));
+        } catch (Exception e) {
+            bg.post(() -> stopInternal(getString(R.string.err_start, e.getMessage()), Session.StopSource.AUTO, true));
+        }
+    }
+
+    private void startScreen(MediaProjection mp, int w, int h, int dpi) {
+        if (cleaned) { mp.stop(); return; }
+        ScreenSession.Options o = new ScreenSession.Options();
+        // Ширина кадру до 1080, висота кратна 16, пропорції як у екрана.
+        int portraitW = Math.min(w, h), portraitH = Math.max(w, h);
+        boolean landscape = w > h;
+        int outShort = Math.min(1080, portraitW) & ~1;
+        int outLong = ScreenSession.align16(Math.round(portraitH * (outShort / (float) portraitW)));
+        o.outW = landscape ? outLong : outShort;
+        o.outH = landscape ? outShort : outLong;
+        o.dpi = dpi;
+        o.frontCamera = prefs.front;
+        boolean micOk = hasPerm(Manifest.permission.RECORD_AUDIO);
+        o.mic = prefs.audio && micOk;
+        o.appAudio = prefs.appAudio && micOk;
+        o.corner = prefs.corner;
+        o.sizeFrac = prefs.bubbleFrac();
+        screen = new ScreenSession(this, mp, o, tmpFile, new ScreenSession.Listener() {
+            @Override public void onFatal(String message) {
+                bg.post(() -> stopInternal(message, Session.StopSource.AUTO, false));
+            }
+            @Override public void onProjectionStopped() {
+                bg.post(() -> stopInternal(null, Session.StopSource.AUTO, false));
+            }
+        });
+        try {
+            screen.start();
+        } catch (Exception e) {
+            stopInternal(getString(R.string.err_start, e.getMessage()), Session.StopSource.AUTO, true);
+            return;
+        }
+        recorderStarted = true;
+        startedAtWall = System.currentTimeMillis();
+        Session.markRecordingStart(Session.now());
+        int autoMin = prefs.autoStopMin();
+        autoStopAtWall = autoMin > 0 ? startedAtWall + autoMin * 60_000L : 0;
+        if (autoMin > 0) bg.postDelayed(() -> stopInternal(null, Session.StopSource.AUTO, false), autoMin * 60_000L);
+        state = RECORDING;
+        notifyUpdate();
     }
 
     private boolean hasPerm(String p) {
@@ -214,18 +309,7 @@ public class RecorderService extends Service {
         StreamConfigurationMap map = ch.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
         Size size = chooseSize(map.getOutputSizes(MediaRecorder.class), prefs.hd1080 ? 1080 : 720);
 
-        // Файл одразу в галерею: Movies/Hahacam
-        String name = "Hahacam_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".mp4";
-        ContentValues v = new ContentValues();
-        v.put(MediaStore.Video.Media.DISPLAY_NAME, name);
-        v.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
-        v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Hahacam");
-        v.put(MediaStore.Video.Media.IS_PENDING, 1);
-        ContentResolver cr = getContentResolver();
-        outUri = cr.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
-        if (outUri == null) throw new IllegalStateException("cannot create output file");
-        pfd = cr.openFileDescriptor(outUri, "rw");
-
+        // Пишемо в тимчасовий файл; у галерею він потрапить після автообрізання.
         boolean audio = prefs.audio && hasPerm(Manifest.permission.RECORD_AUDIO);
         recorder = Build.VERSION.SDK_INT >= 31 ? new MediaRecorder(this) : new MediaRecorder();
         // Для фронталки — основний мікрофон (знизу, ближче до обличчя), для основної — "камкордерний".
@@ -233,7 +317,7 @@ public class RecorderService extends Service {
                                                        : MediaRecorder.AudioSource.CAMCORDER);
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        recorder.setOutputFile(pfd.getFileDescriptor());
+        recorder.setOutputFile(tmpFile);
         recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         recorder.setVideoSize(size.getWidth(), size.getHeight());
         recorder.setVideoFrameRate(30);
@@ -251,11 +335,11 @@ public class RecorderService extends Service {
         recorder.setOnInfoListener((mr, what, extra) -> {
             if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED
                     || what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
-                bg.post(() -> stopInternal(null));
+                bg.post(() -> stopInternal(null, Session.StopSource.AUTO, false));
             }
         });
         recorder.setOnErrorListener((mr, what, extra) ->
-                bg.post(() -> stopInternal(getString(R.string.err_record_code, what))));
+                bg.post(() -> stopInternal(getString(R.string.err_record_code, what), Session.StopSource.AUTO, false)));
         recorder.prepare();
         recorderSurface = recorder.getSurface();
     }
@@ -322,6 +406,7 @@ public class RecorderService extends Service {
             recorder.start();
             recorderStarted = true;
             startedAtWall = System.currentTimeMillis();
+            Session.markRecordingStart(Session.now());
             int autoMin = prefs.autoStopMin();
             autoStopAtWall = autoMin > 0 ? startedAtWall + autoMin * 60_000L : 0;
             state = RECORDING;
@@ -342,18 +427,23 @@ public class RecorderService extends Service {
 
     // ---------------------------------------------------------------- стоп
 
-    /** Викликати лише з фонового потоку bg. */
-    private void stopInternal(String error) {
+    private void stopInternal(String error) { stopInternal(error, Session.StopSource.AUTO, false); }
+
+    /** Викликати лише з фонового потоку bg. discard = не зберігати (скасовано). */
+    private void stopInternal(String error, Session.StopSource src, boolean discard) {
         if (cleaned) return;
         cleaned = true;
         stopping = true;
+        long stopElapsed = Session.now();
         bg.removeCallbacksAndMessages(null);
         if (error != null) lastError = error;
         state = FINISHING;
+        notifyUpdate();
 
-        long durationMs = startedAtWall > 0 ? System.currentTimeMillis() - startedAtWall : 0;
+        long totalMs = startedAtWall > 0 ? System.currentTimeMillis() - startedAtWall : 0;
         boolean saved = false;
 
+        // --- режим камери
         if (session != null) {
             try { session.stopRepeating(); } catch (Exception ignored) { }
         }
@@ -368,23 +458,27 @@ public class RecorderService extends Service {
         if (session != null) { try { session.close(); } catch (Exception ignored) { } session = null; }
         if (camera != null) { try { camera.close(); } catch (Exception ignored) { } camera = null; }
         if (recorderSurface != null) { recorderSurface.release(); recorderSurface = null; }
-        if (pfd != null) { try { pfd.close(); } catch (Exception ignored) { } pfd = null; }
 
-        Uri finished = null;
-        if (outUri != null) {
-            ContentResolver cr = getContentResolver();
-            try {
-                if (saved) {
-                    ContentValues v = new ContentValues();
-                    v.put(MediaStore.Video.Media.IS_PENDING, 0);
-                    cr.update(outUri, v, null, null);
-                    finished = outUri;
-                } else {
-                    cr.delete(outUri, null, null);
-                }
-            } catch (Exception ignored) { }
-            outUri = null;
+        // --- режим екрана
+        long recStart = Session.recStart;
+        if (screen != null) {
+            saved = screen.stop();
+            if (screen.firstSampleElapsed > 0) Session.recStart = screen.firstSampleElapsed;
+            screen = null;
         }
+
+        // --- автообрізання і збереження в галерею
+        Uri finished = null;
+        long durationMs = totalMs;
+        if (saved && !discard && tmpFile != null && tmpFile.length() > 0) {
+            long[] trim = Session.computeTrim(prefs.trim, prefs.tailSec(), src, stopElapsed);
+            long[] dur = {totalMs};
+            finished = saveToGallery(tmpFile, trim[0], trim[1], dur);
+            durationMs = dur[0];
+        }
+        Session.recStart = recStart;
+        Session.markRecordingEnd();
+        if (tmpFile != null) { tmpFile.delete(); tmpFile = null; }
         if (finished != null) lastSavedUri = finished;
 
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
@@ -394,13 +488,64 @@ public class RecorderService extends Service {
         countdownUntilWall = 0;
 
         final Uri doneUri = finished;
+        final long doneMs = durationMs;
         final boolean showDone = prefs != null && !prefs.hiddenNotif;
         main.post(() -> {
             stopForeground(STOP_FOREGROUND_REMOVE);
-            if (doneUri != null && showDone) postDoneNotification(doneUri, durationMs);
+            if (doneUri != null && showDone) postDoneNotification(doneUri, doneMs);
             state = IDLE;
             stopSelf();
         });
+    }
+
+    /**
+     * Копіює запис у галерею (Movies/Hahacam), за потреби обрізаючи початок і кінець без перекодування.
+     * Якщо обрізати не вдалося — зберігає файл як є.
+     */
+    private Uri saveToGallery(File src, long startMs, long endMs, long[] durationOut) {
+        String name = "Hahacam_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".mp4";
+        ContentValues v = new ContentValues();
+        v.put(MediaStore.Video.Media.DISPLAY_NAME, name);
+        v.put(MediaStore.Video.Media.MIME_TYPE, "video/mp4");
+        v.put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/Hahacam");
+        v.put(MediaStore.Video.Media.IS_PENDING, 1);
+        ContentResolver cr = getContentResolver();
+        Uri uri = cr.insert(MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), v);
+        if (uri == null) return null;
+        try (ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "rw")) {
+            boolean trimmed = false;
+            if (startMs > 0 || endMs >= 0) {
+                try {
+                    long us = Trimmer.remux(src, pfd.getFileDescriptor(), startMs * 1000L, endMs < 0 ? -1 : endMs * 1000L);
+                    durationOut[0] = us / 1000L;
+                    trimmed = true;
+                } catch (Exception e) {
+                    android.util.Log.w("Hahacam", "trim failed, saving full file", e);
+                }
+            }
+            if (!trimmed) {
+                try (FileOutputStream out = new FileOutputStream(pfd.getFileDescriptor());
+                     InputStream in = new FileInputStream(src)) {
+                    out.getChannel().truncate(0);
+                    out.getChannel().position(0);
+                    copy(in, out);
+                }
+            }
+            ContentValues done = new ContentValues();
+            done.put(MediaStore.Video.Media.IS_PENDING, 0);
+            cr.update(uri, done, null, null);
+            return uri;
+        } catch (Exception e) {
+            try { cr.delete(uri, null, null); } catch (Exception ignored) { }
+            lastError = getString(R.string.err_save, e.getMessage());
+            return null;
+        }
+    }
+
+    private static void copy(InputStream in, OutputStream out) throws java.io.IOException {
+        byte[] buf = new byte[1 << 16];
+        int n;
+        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
     }
 
     @Override
@@ -410,11 +555,12 @@ public class RecorderService extends Service {
             final Object lock = new Object();
             synchronized (lock) {
                 bg.post(() -> { stopInternal(null); synchronized (lock) { lock.notifyAll(); } });
-                try { lock.wait(3000); } catch (InterruptedException ignored) { }
+                try { lock.wait(8000); } catch (InterruptedException ignored) { }
             }
             state = IDLE;
         }
         if (thread != null) thread.quitSafely();
+        if (instance == this) instance = null;
         super.onDestroy();
     }
 
@@ -442,7 +588,7 @@ public class RecorderService extends Service {
     }
 
     private PendingIntent stopIntent() {
-        Intent i = new Intent(this, RecorderService.class).setAction(ACTION_STOP);
+        Intent i = new Intent(this, RecorderService.class).setAction(ACTION_STOP).putExtra(EXTRA_SRC, "notif");
         return PendingIntent.getService(this, 1, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
@@ -468,9 +614,12 @@ public class RecorderService extends Service {
 
         b.setOngoing(true)
          .addAction(new Notification.Action.Builder(null, getString(R.string.n_stop_save), stopIntent()).build());
-        if (state == RECORDING) {
-            String cam = getString(prefs.front ? R.string.cam_front_lc : R.string.cam_back_lc);
-            b.setContentTitle(getString(R.string.n_rec_title, cam));
+        if (state == FINISHING) {
+            b.setContentTitle(getString(R.string.st_saving));
+        } else if (state == RECORDING) {
+            String what = prefs.screen() ? getString(R.string.n_screen_lc)
+                    : getString(prefs.front ? R.string.cam_front_lc : R.string.cam_back_lc);
+            b.setContentTitle(getString(R.string.n_rec_title, what));
             b.setUsesChronometer(true).setShowWhen(true);
             if (autoStopAtWall > 0) {
                 b.setWhen(autoStopAtWall).setChronometerCountDown(true)
@@ -482,6 +631,8 @@ public class RecorderService extends Service {
             b.setContentTitle(getString(R.string.n_countdown_title))
              .setUsesChronometer(true).setChronometerCountDown(true).setWhen(countdownUntilWall)
              .setContentText(getString(R.string.n_countdown_text));
+        } else if (prefs != null && prefs.screen()) {
+            b.setContentTitle(getString(R.string.n_waiting_screen));
         } else {
             b.setContentTitle(getString(R.string.st_starting_camera));
         }

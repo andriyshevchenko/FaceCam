@@ -11,6 +11,7 @@ import android.content.ContentUris;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.projection.MediaProjectionManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -46,10 +47,12 @@ public class MainActivity extends Activity {
 
     private static final int REQ_PERMS = 10;
     private static final int REQ_DELETE = 11;
+    private static final int REQ_PROJECTION = 12;
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private TextView statusTitle, statusTime, statusSub, emptyList;
-    private Button btnRec;
+    private Button btnRec, btnShareLast;
+    private View bubbleSection, delayRow, tailRow, rgQuality, modeHint;
     private LinearLayout list;
     private View[] settingViews;
     private int lastState = -1;
@@ -115,7 +118,45 @@ public class MainActivity extends Activity {
         hl.onCheckedChanged(swHidden, p.hiddenNotif);
         btnChannel.setOnClickListener(v -> openHiddenChannelSettings());
 
-        settingViews = new View[]{rbFront, rbBack, rb1080, rb720, swAudio, spDelay, spAuto, swHidden};
+        // --- режим
+        bubbleSection = findViewById(R.id.bubbleSection);
+        delayRow = findViewById(R.id.delayRow);
+        tailRow = findViewById(R.id.tailRow);
+        rgQuality = findViewById(R.id.rgQuality);
+        modeHint = findViewById(R.id.modeHint);
+        RadioButton rbModeCam = findViewById(R.id.rbModeCamera), rbModeScreen = findViewById(R.id.rbModeScreen);
+        (p.screen() ? rbModeScreen : rbModeCam).setChecked(true);
+        rbModeScreen.setOnCheckedChangeListener((b, c) -> {
+            sp.edit().putInt("mode", c ? Prefs.MODE_SCREEN : Prefs.MODE_CAMERA).apply();
+            applyModeVisibility(c);
+            lastState = -1;
+        });
+        applyModeVisibility(p.screen());
+
+        Spinner spCorner = findViewById(R.id.spCorner);
+        setupSpinner(spCorner, getResources().getStringArray(R.array.corner_labels), p.corner, i -> sp.edit().putInt("corner", i).apply());
+        Spinner spBubble = findViewById(R.id.spBubble);
+        setupSpinner(spBubble, getResources().getStringArray(R.array.bubble_labels), p.bubbleIdx, i -> sp.edit().putInt("bubble", i).apply());
+        Switch swAppAudio = findViewById(R.id.swAppAudio);
+        swAppAudio.setChecked(p.appAudio);
+        swAppAudio.setOnCheckedChangeListener((b, c) -> sp.edit().putBoolean("appAudio", c).apply());
+
+        // --- автообрізання
+        Switch swTrim = findViewById(R.id.swTrim);
+        swTrim.setChecked(p.trim);
+        swTrim.setOnCheckedChangeListener((b, c) -> {
+            sp.edit().putBoolean("trim", c).apply();
+            tailRow.setVisibility(c ? View.VISIBLE : View.GONE);
+        });
+        tailRow.setVisibility(p.trim ? View.VISIBLE : View.GONE);
+        Spinner spTail = findViewById(R.id.spTail);
+        setupSpinner(spTail, getResources().getStringArray(R.array.tail_labels), p.tailIdx, i -> sp.edit().putInt("tail", i).apply());
+
+        btnShareLast = findViewById(R.id.btnShareLast);
+        btnShareLast.setOnClickListener(v -> { if (RecorderService.lastSavedUri != null) share(RecorderService.lastSavedUri); });
+
+        settingViews = new View[]{rbFront, rbBack, rb1080, rb720, swAudio, spDelay, spAuto, swHidden,
+                rbModeCam, rbModeScreen, spCorner, spBubble, swAppAudio, swTrim, spTail};
         if (!BuildConfig.ALLOW_HIDDEN_NOTIFICATION) findViewById(R.id.hiddenSection).setVisibility(View.GONE);
 
         findViewById(R.id.btnTerms).setOnClickListener(v -> openUrl(legalUrl("terms")));
@@ -128,6 +169,25 @@ public class MainActivity extends Activity {
             if (RecorderService.state == RecorderService.IDLE) startWithPermissions();
             else stopRecording();
         });
+    }
+
+    private void applyModeVisibility(boolean screen) {
+        bubbleSection.setVisibility(screen ? View.VISIBLE : View.GONE);
+        modeHint.setVisibility(screen ? View.VISIBLE : View.GONE);
+        delayRow.setVisibility(screen ? View.GONE : View.VISIBLE);
+        rgQuality.setVisibility(screen ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Session.onAppVisible(true);
+    }
+
+    @Override
+    protected void onStop() {
+        Session.onAppVisible(false);
+        super.onStop();
     }
 
     interface IntCb { void on(int i); }
@@ -166,7 +226,9 @@ public class MainActivity extends Activity {
         Prefs p = Prefs.load(this);
         List<String> need = new ArrayList<>();
         if (!granted(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA);
-        if (p.audio && !granted(Manifest.permission.RECORD_AUDIO)) need.add(Manifest.permission.RECORD_AUDIO);
+        if ((p.audio || (p.screen() && p.appAudio)) && !granted(Manifest.permission.RECORD_AUDIO)) {
+            need.add(Manifest.permission.RECORD_AUDIO);
+        }
         if (Build.VERSION.SDK_INT >= 33 && !p.hiddenNotif && !granted(Manifest.permission.POST_NOTIFICATIONS)) {
             need.add(Manifest.permission.POST_NOTIFICATIONS);
         }
@@ -182,7 +244,8 @@ public class MainActivity extends Activity {
             Toast.makeText(this, getString(R.string.perm_camera_denied), Toast.LENGTH_LONG).show();
             return;
         }
-        if (Prefs.load(this).audio && !granted(Manifest.permission.RECORD_AUDIO)) {
+        Prefs pp = Prefs.load(this);
+        if ((pp.audio || (pp.screen() && pp.appAudio)) && !granted(Manifest.permission.RECORD_AUDIO)) {
             Toast.makeText(this, getString(R.string.perm_mic_denied), Toast.LENGTH_LONG).show();
         }
         startRecording();
@@ -201,15 +264,28 @@ public class MainActivity extends Activity {
             return;
         }
         Prefs p = Prefs.load(this);
+        if (p.screen()) {
+            MediaProjectionManager mpm = getSystemService(MediaProjectionManager.class);
+            try {
+                startActivityForResult(mpm.createScreenCaptureIntent(), REQ_PROJECTION);
+            } catch (Exception e) {
+                stopRecording("cancel");
+                Toast.makeText(this, getString(R.string.start_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         String msg = p.delaySec() > 0
                 ? getString(R.string.started_delay, p.delaySec())
                 : getString(R.string.started_now);
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 
-    private void stopRecording() {
-        Intent i = new Intent(this, RecorderService.class).setAction(RecorderService.ACTION_STOP);
-        startService(i);
+    private void stopRecording() { stopRecording("app"); }
+
+    private void stopRecording(String src) {
+        Intent i = new Intent(this, RecorderService.class).setAction(RecorderService.ACTION_STOP)
+                .putExtra(RecorderService.EXTRA_SRC, src);
+        try { startService(i); } catch (Exception ignored) { }
     }
 
     private void refreshStatus() {
@@ -225,7 +301,8 @@ public class MainActivity extends Activity {
             statusSub.setText(auto > 0 ? getString(R.string.st_autostop_in, fmtDuration(Math.max(0, auto - now))) : getString(R.string.st_no_autostop));
         } else if (st == RecorderService.COUNTDOWN) {
             long left = RecorderService.countdownUntilWall - now;
-            statusTitle.setText(left > 0 ? R.string.st_starts_in : R.string.st_starting_camera);
+            statusTitle.setText(left > 0 ? R.string.st_starts_in
+                    : Prefs.load(this).screen() ? R.string.n_waiting_screen : R.string.st_starting_camera);
             statusTitle.setTextColor(statusSub.getCurrentTextColor());
             statusTime.setText(left > 0 ? String.valueOf((left + 999) / 1000) : "…");
             statusSub.setText(R.string.st_countdown_hint);
@@ -239,6 +316,7 @@ public class MainActivity extends Activity {
         lastState = st;
 
         boolean idle = st == RecorderService.IDLE;
+        btnShareLast.setVisibility(idle && RecorderService.lastSavedUri != null ? View.VISIBLE : View.GONE);
         btnRec.setText(idle ? R.string.btn_start : R.string.btn_stop);
         btnRec.setBackgroundResource(idle ? R.drawable.btn_rec : R.drawable.btn_stop);
         btnRec.setEnabled(st != RecorderService.FINISHING);
@@ -249,9 +327,11 @@ public class MainActivity extends Activity {
             statusTitle.setTextColor(statusSub.getCurrentTextColor());
             statusTime.setText("00:00");
             Prefs p = Prefs.load(this);
-            statusSub.setText(getString(p.front ? R.string.cam_front : R.string.cam_back) + " · "
-                    + (p.hd1080 ? "1080p" : "720p") + " · "
-                    + getString(p.audio ? R.string.with_sound : R.string.no_sound));
+            statusSub.setText(p.screen()
+                    ? getString(R.string.mode_screen) + " · " + getString(p.audio || p.appAudio ? R.string.with_sound : R.string.no_sound)
+                    : getString(p.front ? R.string.cam_front : R.string.cam_back) + " · "
+                      + (p.hd1080 ? "1080p" : "720p") + " · "
+                      + getString(p.audio ? R.string.with_sound : R.string.no_sound));
             if (prev != -1 && prev != RecorderService.IDLE) {
                 loadRecordings();
                 String err = RecorderService.lastError;
@@ -449,6 +529,25 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_PROJECTION) {
+            RecorderService svc = RecorderService.instance;
+            if (resultCode == RESULT_OK && data != null && svc != null) {
+                int w, h;
+                if (Build.VERSION.SDK_INT >= 30) {
+                    android.graphics.Rect b = getWindowManager().getMaximumWindowMetrics().getBounds();
+                    w = b.width(); h = b.height();
+                } else {
+                    android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+                    getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+                    w = dm.widthPixels; h = dm.heightPixels;
+                }
+                svc.onProjectionGranted(resultCode, data, w, h, getResources().getDisplayMetrics().densityDpi);
+            } else {
+                stopRecording("cancel");
+                Toast.makeText(this, R.string.screen_cancelled, Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         if (requestCode == REQ_DELETE && resultCode == RESULT_OK) {
             if (Build.VERSION.SDK_INT < 30 && pendingDelete != null) {
                 try { getContentResolver().delete(pendingDelete, null, null); } catch (Exception ignored) { }

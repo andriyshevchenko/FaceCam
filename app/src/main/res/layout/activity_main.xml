@@ -74,6 +74,85 @@
                 android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnShareLast"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/share_last"
+                android:textAllCaps="false"
+                android:textColor="@color/accent"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Режим -->
+        <TextView
+            style="@style/Section"
+            android:text="@string/section_mode" />
+
+        <RadioGroup
+            android:id="@+id/rgMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/rbModeCamera"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="@string/mode_camera" />
+
+            <RadioButton
+                android:id="@+id/rbModeScreen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="44dp"
+                android:text="@string/mode_screen" />
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/modeHint"
+            style="@style/Label"
+            android:text="@string/mode_screen_hint" />
+
+        <!-- Кружечок (лише режим екрана) -->
+        <LinearLayout
+            android:id="@+id/bubbleSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Section"
+                android:text="@string/section_bubble" />
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/bubble_corner" />
+
+            <Spinner
+                android:id="@+id/spCorner"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/bubble_size" />
+
+            <Spinner
+                android:id="@+id/spBubble"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+
+            <Switch
+                android:id="@+id/swAppAudio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/app_audio_switch" />
         </LinearLayout>
 
         <!-- Налаштування -->
@@ -134,14 +213,21 @@
             style="@style/Section"
             android:text="@string/section_timer" />
 
-        <TextView
-            style="@style/Label"
-            android:text="@string/delay_label" />
-
-        <Spinner
-            android:id="@+id/spDelay"
+        <LinearLayout
+            android:id="@+id/delayRow"
             android:layout_width="match_parent"
-            android:layout_height="48dp" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/delay_label" />
+
+            <Spinner
+                android:id="@+id/spDelay"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+        </LinearLayout>
 
         <TextView
             style="@style/Label"
@@ -151,6 +237,38 @@
             android:id="@+id/spAutoStop"
             android:layout_width="match_parent"
             android:layout_height="48dp" />
+
+        <!-- Автообрізання -->
+        <TextView
+            style="@style/Section"
+            android:text="@string/section_trim" />
+
+        <Switch
+            android:id="@+id/swTrim"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/trim_switch" />
+
+        <TextView
+            style="@style/Label"
+            android:text="@string/trim_hint" />
+
+        <LinearLayout
+            android:id="@+id/tailRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Label"
+                android:text="@string/tail_label" />
+
+            <Spinner
+                android:id="@+id/spTail"
+                android:layout_width="match_parent"
+                android:layout_height="48dp" />
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/hiddenSection"
