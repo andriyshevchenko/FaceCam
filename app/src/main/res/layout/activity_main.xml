@@ -155,6 +155,23 @@
                 android:text="@string/app_audio_switch" />
         </LinearLayout>
 
+        <!-- Плаваюча кнопка -->
+        <TextView
+            style="@style/Section"
+            android:text="@string/section_overlay" />
+
+        <Switch
+            android:id="@+id/swOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/overlay_switch" />
+
+        <TextView
+            android:id="@+id/overlayHint"
+            style="@style/Label"
+            android:text="@string/overlay_hint" />
+
         <!-- Налаштування -->
         <TextView
             style="@style/Section"

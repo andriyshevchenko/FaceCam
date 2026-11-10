@@ -61,6 +61,7 @@ public class RecorderService extends Service {
 
     static final String ACTION_START = "ua.hahacam.START";
     static final String ACTION_STOP = "ua.hahacam.STOP";
+    static final String ACTION_GO = "ua.hahacam.GO";
     static final String EXTRA_SRC = "src";          // "app" | "notif" | "cancel"
 
     /** Поточний екземпляр (для передачі дозволу на запис екрана з активності). */
@@ -73,7 +74,7 @@ public class RecorderService extends Service {
     private static final int DONE_ID = 2;
 
     // Стан, який читає головний екран.
-    static final int IDLE = 0, COUNTDOWN = 1, RECORDING = 2, FINISHING = 3;
+    static final int IDLE = 0, COUNTDOWN = 1, RECORDING = 2, FINISHING = 3, READY = 4;
     static volatile int state = IDLE;
     static volatile long countdownUntilWall = 0;   // System.currentTimeMillis()
     static volatile long startedAtWall = 0;
@@ -93,6 +94,15 @@ public class RecorderService extends Service {
     private File tmpFile;
     private ScreenSession screen;
     private int fgsTypes;
+
+    // Плаваюче вікно (прев'ю + кнопка «Почати»)
+    private boolean useOverlay;
+    private OverlayController overlay;
+    private volatile android.graphics.SurfaceTexture previewTexture;
+    private Surface previewSurface;
+    private CameraCharacteristics camChars;
+    private Object[] pendingProjection;      // {MediaProjection, w, h, dpi}
+    private boolean goRequested;
     private PowerManager.WakeLock wakeLock;
     private boolean recorderStarted;
     private boolean stopping;
@@ -122,6 +132,10 @@ public class RecorderService extends Service {
             if (state == IDLE) { stopSelf(); } else { bg.post(() -> stopInternal(null, ss, discard)); }
             return START_NOT_STICKY;
         }
+        if (ACTION_GO.equals(action)) {
+            bg.post(this::onGoRequested);
+            return START_NOT_STICKY;
+        }
         if (ACTION_START.equals(action)) {
             if (state != IDLE) {
                 // Вже пишемо: Android все одно чекає startForeground на кожен такий запуск.
@@ -143,7 +157,11 @@ public class RecorderService extends Service {
         stopping = false;
         recorderStarted = false;
 
-        int delay = prefs.delaySec();
+        useOverlay = prefs.overlay && OverlayController.allowed(this);
+        goRequested = false;
+        pendingProjection = null;
+        previewTexture = null;
+        int delay = useOverlay ? 0 : prefs.delaySec();   // з плаваючою кнопкою відлік — після «Почати»
         long now = System.currentTimeMillis();
         countdownUntilWall = delay > 0 ? now + delay * 1000L : 0;
         state = COUNTDOWN; // "готуємось" (з затримкою або без)
@@ -172,12 +190,94 @@ public class RecorderService extends Service {
         wakeLock.acquire(4 * 60 * 60 * 1000L);
 
         tmpFile = newTempFile();
+        if (useOverlay) main.post(this::showOverlay);
         if (prefs.screen()) {
             // Чекаємо, поки користувач дозволить запис екрана (onProjectionGranted).
             bg.postDelayed(() -> { if (state == COUNTDOWN && screen == null) stopInternal(null, Session.StopSource.AUTO, true); }, 120_000);
             return;
         }
-        bg.postDelayed(this::openCamera, delay * 1000L);
+        if (!useOverlay) bg.postDelayed(this::openCamera, delay * 1000L);
+        // з плаваючим вікном камера відкриється, щойно буде готове прев'ю (maybeArm)
+    }
+
+    // ---------------------------------------------------------------- плаваюче вікно
+
+    private void showOverlay() {
+        if (cleaned) return;
+        overlay = new OverlayController(this, new OverlayController.Listener() {
+            @Override public void onPreviewTexture(android.graphics.SurfaceTexture st) {
+                previewTexture = st;
+                bg.post(RecorderService.this::maybeArm);
+            }
+            @Override public void onStartTap() { bg.post(RecorderService.this::onGoRequested); }
+            @Override public void onStopTap() { bg.post(() -> stopInternal(null, Session.StopSource.NOTIFICATION, false)); }
+            @Override public void onCancelTap() { bg.post(() -> stopInternal(null, Session.StopSource.AUTO, true)); }
+        });
+        if (!overlay.show()) {
+            // Не вдалося показати вікно — працюємо як без нього.
+            overlay = null;
+            bg.post(() -> {
+                useOverlay = false;
+                if (cleaned) return;
+                if (prefs.screen()) {
+                    if (pendingProjection != null) {
+                        Object[] p = pendingProjection;
+                        pendingProjection = null;
+                        startScreen((MediaProjection) p[0], (int) p[1], (int) p[2], (int) p[3]);
+                    }
+                } else {
+                    openCamera();
+                }
+            });
+        }
+    }
+
+    /** (bg) Коли є і прев'ю, і (для екрана) дозвіл — готуємо все й переходимо в READY. */
+    private void maybeArm() {
+        if (cleaned || previewTexture == null) return;
+        if (prefs.screen()) {
+            if (pendingProjection != null && screen == null) {
+                Object[] p = pendingProjection;
+                pendingProjection = null;
+                startScreen((MediaProjection) p[0], (int) p[1], (int) p[2], (int) p[3]);
+            }
+        } else if (camera == null && recorder == null) {
+            openCamera();
+        }
+    }
+
+    /** (bg) Натиснули «Почати»: відлік (якщо задано), потім запис. */
+    private void onGoRequested() {
+        if (state != READY || goRequested || cleaned) return;
+        goRequested = true;
+        int delay = prefs.delaySec();
+        countdownUntilWall = delay > 0 ? System.currentTimeMillis() + delay * 1000L : 0;
+        notifyUpdate();
+        bg.postDelayed(this::go, delay * 1000L);
+    }
+
+    private void go() {
+        if (cleaned || state != READY) return;
+        countdownUntilWall = 0;
+        if (screen != null) {
+            screen.go();
+            markStarted();
+        } else if (camChars != null) {
+            startRecording(camChars);
+        }
+    }
+
+    private void markStarted() {
+        recorderStarted = true;
+        startedAtWall = System.currentTimeMillis();
+        Session.markRecordingStart(Session.now());
+        int autoMin = prefs.autoStopMin();
+        autoStopAtWall = autoMin > 0 ? startedAtWall + autoMin * 60_000L : 0;
+        if (autoMin > 0 && screen != null) {
+            bg.postDelayed(() -> stopInternal(null, Session.StopSource.AUTO, false), autoMin * 60_000L);
+        }
+        state = RECORDING;
+        notifyUpdate();
     }
 
     /** На Android 10 типів camera/microphone ще немає — там лише mediaProjection або без типу. */
@@ -207,7 +307,11 @@ public class RecorderService extends Service {
             startFg(buildRecordingNotification(), fgsTypes);
             MediaProjection mp = getSystemService(MediaProjectionManager.class).getMediaProjection(resultCode, data);
             if (mp == null) throw new IllegalStateException("no projection");
-            bg.post(() -> startScreen(mp, w, h, dpi));
+            if (useOverlay) {
+                bg.post(() -> { pendingProjection = new Object[]{mp, w, h, dpi}; maybeArm(); });
+            } else {
+                bg.post(() -> startScreen(mp, w, h, dpi));
+            }
         } catch (Exception e) {
             bg.post(() -> stopInternal(getString(R.string.err_start, e.getMessage()), Session.StopSource.AUTO, true));
         }
@@ -239,19 +343,19 @@ public class RecorderService extends Service {
             }
         });
         try {
-            screen.start();
+            screen.start(useOverlay ? previewTexture : null, useOverlay);
         } catch (Exception e) {
             stopInternal(getString(R.string.err_start, e.getMessage()), Session.StopSource.AUTO, true);
             return;
         }
-        recorderStarted = true;
-        startedAtWall = System.currentTimeMillis();
-        Session.markRecordingStart(Session.now());
-        int autoMin = prefs.autoStopMin();
-        autoStopAtWall = autoMin > 0 ? startedAtWall + autoMin * 60_000L : 0;
-        if (autoMin > 0) bg.postDelayed(() -> stopInternal(null, Session.StopSource.AUTO, false), autoMin * 60_000L);
-        state = RECORDING;
-        notifyUpdate();
+        if (useOverlay) {
+            final float a = screen.uprightAspect;
+            main.post(() -> { if (overlay != null) overlay.setUprightAspect(a); });
+            state = READY;
+            notifyUpdate();
+        } else {
+            markStarted();
+        }
     }
 
     private boolean hasPerm(String p) {
@@ -270,7 +374,18 @@ public class RecorderService extends Service {
             String id = pickCamera(cm, prefs.front);
             if (id == null) { stopInternal(getString(R.string.err_no_camera)); return; }
             CameraCharacteristics ch = cm.getCameraCharacteristics(id);
+            camChars = ch;
             setupRecorder(ch);
+            if (useOverlay && previewTexture != null) {
+                StreamConfigurationMap map = ch.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                Size ps = chooseSize(map.getOutputSizes(android.graphics.SurfaceTexture.class), 720);
+                previewTexture.setDefaultBufferSize(ps.getWidth(), ps.getHeight());
+                previewSurface = new Surface(previewTexture);
+                Integer so = ch.get(CameraCharacteristics.SENSOR_ORIENTATION);
+                boolean swap = so != null && so % 180 != 0;
+                final float a = swap ? ps.getHeight() / (float) ps.getWidth() : ps.getWidth() / (float) ps.getHeight();
+                main.post(() -> { if (overlay != null) overlay.setUprightAspect(a); });
+            }
             cm.openCamera(id, new CameraDevice.StateCallback() {
                 @Override public void onOpened(CameraDevice c) {
                     if (cleaned) { c.close(); return; }
@@ -376,14 +491,17 @@ public class RecorderService extends Service {
     private void createSession(CameraCharacteristics ch) {
         try {
             Executor ex = r -> bg.post(r);
+            java.util.List<OutputConfiguration> outs = new java.util.ArrayList<>();
+            outs.add(new OutputConfiguration(recorderSurface));
+            if (previewSurface != null) outs.add(new OutputConfiguration(previewSurface));
             SessionConfiguration cfg = new SessionConfiguration(SessionConfiguration.SESSION_REGULAR,
-                    Collections.singletonList(new OutputConfiguration(recorderSurface)), ex,
+                    outs, ex,
                     new CameraCaptureSession.StateCallback() {
                         @Override public void onConfigured(CameraCaptureSession s) {
                             if (cleaned) { s.close(); return; }
                             session = s;
                             if (stopping) { stopInternal(null); return; }
-                            startRecording(ch);
+                            if (useOverlay) startPreviewOnly(ch); else startRecording(ch);
                         }
                         @Override public void onConfigureFailed(CameraCaptureSession s) {
                             stopInternal(getString(R.string.err_config));
@@ -395,22 +513,35 @@ public class RecorderService extends Service {
         }
     }
 
-    private void startRecording(CameraCharacteristics ch) {
+    /** Прев'ю без запису: стан READY, чекаємо «Почати». */
+    private void startPreviewOnly(CameraCharacteristics ch) {
         try {
             CaptureRequest.Builder b = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
-            b.addTarget(recorderSurface);
+            b.addTarget(previewSurface);
             b.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
             Range<Integer> fps = pickFps(ch.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES));
             if (fps != null) b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fps);
             session.setRepeatingRequest(b.build(), null, bg);
-            recorder.start();
-            recorderStarted = true;
-            startedAtWall = System.currentTimeMillis();
-            Session.markRecordingStart(Session.now());
-            int autoMin = prefs.autoStopMin();
-            autoStopAtWall = autoMin > 0 ? startedAtWall + autoMin * 60_000L : 0;
-            state = RECORDING;
+            state = READY;
             notifyUpdate();
+        } catch (Exception e) {
+            stopInternal(getString(R.string.err_start, e.getMessage()));
+        }
+    }
+
+    private void startRecording(CameraCharacteristics ch) {
+        try {
+            // Спершу запускаємо рекордер, потім шлемо йому кадри.
+            if (useOverlay) recorder.start();
+            CaptureRequest.Builder b = camera.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            b.addTarget(recorderSurface);
+            if (previewSurface != null) b.addTarget(previewSurface);
+            b.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+            Range<Integer> fps = pickFps(ch.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES));
+            if (fps != null) b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fps);
+            session.setRepeatingRequest(b.build(), null, bg);
+            if (!useOverlay) recorder.start();
+            markStarted();
         } catch (Exception e) {
             stopInternal(getString(R.string.err_start, e.getMessage()));
         }
@@ -458,6 +589,12 @@ public class RecorderService extends Service {
         if (session != null) { try { session.close(); } catch (Exception ignored) { } session = null; }
         if (camera != null) { try { camera.close(); } catch (Exception ignored) { } camera = null; }
         if (recorderSurface != null) { recorderSurface.release(); recorderSurface = null; }
+        if (previewSurface != null) { previewSurface.release(); previewSurface = null; }
+        camChars = null;
+        if (pendingProjection != null) {
+            try { ((MediaProjection) pendingProjection[0]).stop(); } catch (Exception ignored) { }
+            pendingProjection = null;
+        }
 
         // --- режим екрана
         long recStart = Session.recStart;
@@ -491,6 +628,7 @@ public class RecorderService extends Service {
         final long doneMs = durationMs;
         final boolean showDone = prefs != null && !prefs.hiddenNotif;
         main.post(() -> {
+            if (overlay != null) { overlay.remove(); overlay = null; }
             stopForeground(STOP_FOREGROUND_REMOVE);
             if (doneUri != null && showDone) postDoneNotification(doneUri, doneMs);
             state = IDLE;
@@ -592,6 +730,16 @@ public class RecorderService extends Service {
         return PendingIntent.getService(this, 1, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
+    private PendingIntent goIntent() {
+        Intent i = new Intent(this, RecorderService.class).setAction(ACTION_GO);
+        return PendingIntent.getService(this, 4, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
+    private PendingIntent cancelIntent() {
+        Intent i = new Intent(this, RecorderService.class).setAction(ACTION_STOP).putExtra(EXTRA_SRC, "cancel");
+        return PendingIntent.getService(this, 5, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    }
+
     private Notification buildRecordingNotification() {
         boolean hidden = prefs != null && prefs.hiddenNotif;
         Notification.Builder b = new Notification.Builder(this, hidden ? CH_HIDDEN : CH_NORMAL)
@@ -614,7 +762,19 @@ public class RecorderService extends Service {
 
         b.setOngoing(true)
          .addAction(new Notification.Action.Builder(null, getString(R.string.n_stop_save), stopIntent()).build());
-        if (state == FINISHING) {
+        if (state == READY) {
+            b = new Notification.Builder(this, hidden ? CH_HIDDEN : CH_NORMAL)
+                    .setSmallIcon(R.drawable.ic_stat_rec)
+                    .setContentIntent(openAppIntent())
+                    .setOnlyAlertOnce(true)
+                    .setOngoing(true)
+                    .setContentTitle(getString(R.string.n_ready_title))
+                    .setContentText(getString(R.string.n_ready_text))
+                    .addAction(new Notification.Action.Builder(null, getString(R.string.ov_start), goIntent()).build())
+                    .addAction(new Notification.Action.Builder(null, getString(R.string.cancel), cancelIntent()).build());
+            if (Build.VERSION.SDK_INT >= 31) b.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
+            return b.build();
+        } else if (state == FINISHING) {
             b.setContentTitle(getString(R.string.st_saving));
         } else if (state == RECORDING) {
             String what = prefs.screen() ? getString(R.string.n_screen_lc)

@@ -53,6 +53,7 @@ public class MainActivity extends Activity {
     private TextView statusTitle, statusTime, statusSub, emptyList;
     private Button btnRec, btnShareLast;
     private View bubbleSection, delayRow, tailRow, rgQuality, modeHint;
+    private Switch swOverlay;
     private LinearLayout list;
     private View[] settingViews;
     private int lastState = -1;
@@ -126,6 +127,14 @@ public class MainActivity extends Activity {
         modeHint = findViewById(R.id.modeHint);
         RadioButton rbModeCam = findViewById(R.id.rbModeCamera), rbModeScreen = findViewById(R.id.rbModeScreen);
         (p.screen() ? rbModeScreen : rbModeCam).setChecked(true);
+        swOverlay = findViewById(R.id.swOverlay);
+        swOverlay.setChecked(p.overlay);
+        swOverlay.setOnCheckedChangeListener((b, c) -> {
+            sp.edit().putBoolean("overlay", c).apply();
+            if (c && !OverlayController.allowed(this)) requestOverlayPermission();
+            applyModeVisibility(Prefs.load(this).screen());
+        });
+
         rbModeScreen.setOnCheckedChangeListener((b, c) -> {
             sp.edit().putInt("mode", c ? Prefs.MODE_SCREEN : Prefs.MODE_CAMERA).apply();
             applyModeVisibility(c);
@@ -156,7 +165,7 @@ public class MainActivity extends Activity {
         btnShareLast.setOnClickListener(v -> { if (RecorderService.lastSavedUri != null) share(RecorderService.lastSavedUri); });
 
         settingViews = new View[]{rbFront, rbBack, rb1080, rb720, swAudio, spDelay, spAuto, swHidden,
-                rbModeCam, rbModeScreen, spCorner, spBubble, swAppAudio, swTrim, spTail};
+                rbModeCam, rbModeScreen, spCorner, spBubble, swAppAudio, swTrim, spTail, swOverlay};
         if (!BuildConfig.ALLOW_HIDDEN_NOTIFICATION) findViewById(R.id.hiddenSection).setVisibility(View.GONE);
 
         findViewById(R.id.btnTerms).setOnClickListener(v -> openUrl(legalUrl("terms")));
@@ -174,8 +183,17 @@ public class MainActivity extends Activity {
     private void applyModeVisibility(boolean screen) {
         bubbleSection.setVisibility(screen ? View.VISIBLE : View.GONE);
         modeHint.setVisibility(screen ? View.VISIBLE : View.GONE);
-        delayRow.setVisibility(screen ? View.GONE : View.VISIBLE);
+        boolean overlayOn = Prefs.sp(this).getBoolean("overlay", false);
+        delayRow.setVisibility(screen && !overlayOn ? View.GONE : View.VISIBLE);
         rgQuality.setVisibility(screen ? View.GONE : View.VISIBLE);
+    }
+
+    private void requestOverlayPermission() {
+        Toast.makeText(this, R.string.overlay_perm_toast, Toast.LENGTH_LONG).show();
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -224,6 +242,7 @@ public class MainActivity extends Activity {
     private void startWithPermissions() {
         if (!Prefs.hasConsent(this)) { showConsentDialog(true); return; }
         Prefs p = Prefs.load(this);
+        if (p.overlay && !OverlayController.allowed(this)) { requestOverlayPermission(); return; }
         List<String> need = new ArrayList<>();
         if (!granted(Manifest.permission.CAMERA)) need.add(Manifest.permission.CAMERA);
         if ((p.audio || (p.screen() && p.appAudio)) && !granted(Manifest.permission.RECORD_AUDIO)) {
@@ -274,6 +293,10 @@ public class MainActivity extends Activity {
             }
             return;
         }
+        if (p.overlay) {
+            Toast.makeText(this, R.string.overlay_ready_toast, Toast.LENGTH_LONG).show();
+            return;
+        }
         String msg = p.delaySec() > 0
                 ? getString(R.string.started_delay, p.delaySec())
                 : getString(R.string.started_now);
@@ -306,6 +329,12 @@ public class MainActivity extends Activity {
             statusTitle.setTextColor(statusSub.getCurrentTextColor());
             statusTime.setText(left > 0 ? String.valueOf((left + 999) / 1000) : "…");
             statusSub.setText(R.string.st_countdown_hint);
+        } else if (st == RecorderService.READY) {
+            long left = RecorderService.countdownUntilWall - now;
+            statusTitle.setText(left > 0 ? R.string.st_starts_in : R.string.st_ready);
+            statusTitle.setTextColor(statusSub.getCurrentTextColor());
+            statusTime.setText(left > 0 ? String.valueOf((left + 999) / 1000) : "▶");
+            statusSub.setText(R.string.n_ready_text);
         } else if (st == RecorderService.FINISHING) {
             statusTitle.setText(R.string.st_saving);
             statusSub.setText("");
@@ -317,7 +346,8 @@ public class MainActivity extends Activity {
 
         boolean idle = st == RecorderService.IDLE;
         btnShareLast.setVisibility(idle && RecorderService.lastSavedUri != null ? View.VISIBLE : View.GONE);
-        btnRec.setText(idle ? R.string.btn_start : R.string.btn_stop);
+        btnRec.setText(idle ? R.string.btn_start
+                : st == RecorderService.READY || st == RecorderService.COUNTDOWN ? R.string.btn_cancel : R.string.btn_stop);
         btnRec.setBackgroundResource(idle ? R.drawable.btn_rec : R.drawable.btn_stop);
         btnRec.setEnabled(st != RecorderService.FINISHING);
         for (View v : settingViews) v.setEnabled(idle);

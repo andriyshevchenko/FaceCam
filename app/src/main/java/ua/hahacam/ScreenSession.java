@@ -113,6 +113,13 @@ final class ScreenSession {
     private CameraCaptureSession camSession;
 
     volatile long firstSampleElapsed;
+    /** Ширина/висота кадру камери «стоячи» (для прев'ю в плаваючому вікні). */
+    volatile float uprightAspect = 0.5625f;
+
+    private SurfaceTexture previewTexture;   // з плаваючого вікна, може бути null
+    private Surface previewSurface;
+    private volatile boolean active;         // false — «готовий»: прев'ю є, у файл ще не пишемо
+    private boolean wantAudio;
 
     ScreenSession(Context ctx, MediaProjection projection, Options opt, File outFile, Listener listener) {
         this.ctx = ctx;
@@ -124,7 +131,13 @@ final class ScreenSession {
 
     // ================================================================ старт
 
-    void start() throws Exception {
+    /**
+     * @param preview SurfaceTexture плаваючого прев'ю або null
+     * @param armed   true — підготувати все, але писати лише після go()
+     */
+    void start(SurfaceTexture preview, boolean armed) throws Exception {
+        previewTexture = preview;
+        active = !armed;
         glThread = new HandlerThread("hc-gl");
         glThread.start();
         gl = new Handler(glThread.getLooper());
@@ -132,7 +145,7 @@ final class ScreenSession {
         camThread.start();
         cam = new Handler(camThread.getLooper());
 
-        boolean wantAudio = (opt.mic || opt.appAudio) && setupAudioRecorders();
+        wantAudio = (opt.mic || opt.appAudio) && setupAudioRecorders();
         setupEncoders(wantAudio);
         mux = new MuxerSync(new MediaMuxer(outFile.getPath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4),
                 wantAudio ? aacTrackFormat() : null, () -> {
@@ -165,15 +178,25 @@ final class ScreenSession {
         // Потоки кодування
         vDrain = new Thread(this::drainVideo, "hc-vdrain");
         vDrain.start();
-        if (wantAudio) {
-            audioRunning = true;
-            audioThread = new Thread(this::audioLoop, "hc-audio");
-            audioThread.start();
-        }
+        if (active) startAudio();
 
         rendering = true;
         nextFrameAt = SystemClock.uptimeMillis();
         gl.post(this::renderTick);
+    }
+
+    /** Почати писати у файл (після натискання «Почати»). */
+    void go() {
+        if (active) return;
+        active = true;
+        startAudio();
+    }
+
+    private void startAudio() {
+        if (!wantAudio || audioThread != null) return;
+        audioRunning = true;
+        audioThread = new Thread(this::audioLoop, "hc-audio");
+        audioThread.start();
     }
 
     private void setupEncoders(boolean audio) throws Exception {
@@ -275,6 +298,11 @@ final class ScreenSession {
         float uprightW = swap ? size.getHeight() : size.getWidth();
         float uprightH = swap ? size.getWidth() : size.getHeight();
         float aspect = uprightW / uprightH;
+        uprightAspect = aspect;
+        if (previewTexture != null) {
+            previewTexture.setDefaultBufferSize(size.getWidth(), size.getHeight());
+            previewSurface = new Surface(previewTexture);
+        }
         if (aspect < 1f) { cropX = 1f; cropY = aspect; } else { cropX = 1f / aspect; cropY = 1f; }
 
         final Range<Integer> fps = pickFps(ch.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES));
@@ -284,14 +312,18 @@ final class ScreenSession {
             @Override public void onOpened(CameraDevice c) {
                 camera = c;
                 try {
+                    java.util.List<OutputConfiguration> outs = new java.util.ArrayList<>();
+                    outs.add(new OutputConfiguration(camSurface));
+                    if (previewSurface != null) outs.add(new OutputConfiguration(previewSurface));
                     SessionConfiguration cfg = new SessionConfiguration(SessionConfiguration.SESSION_REGULAR,
-                            Collections.singletonList(new OutputConfiguration(camSurface)), cam::post,
+                            outs, cam::post,
                             new CameraCaptureSession.StateCallback() {
                                 @Override public void onConfigured(CameraCaptureSession s) {
                                     camSession = s;
                                     try {
                                         CaptureRequest.Builder b = c.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
                                         b.addTarget(camSurface);
+                                        if (previewSurface != null) b.addTarget(previewSurface);
                                         b.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
                                         if (fps != null) b.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, fps);
                                         s.setRepeatingRequest(b.build(), null, cam);
@@ -480,6 +512,10 @@ final class ScreenSession {
         try {
             if (screenNew) { screenNew = false; stScreen.updateTexImage(); stScreen.getTransformMatrix(mScreen); haveScreen = true; }
             if (camNew) { camNew = false; stCam.updateTexImage(); stCam.getTransformMatrix(mCam); haveCam = true; }
+            if (!active) {   // «готовий»: кадри лише споживаємо, у кодер не віддаємо
+                scheduleNext();
+                return;
+            }
 
             GLES20.glViewport(0, 0, opt.outW, opt.outH);
             GLES20.glClearColor(0f, 0f, 0f, 1f);
@@ -499,6 +535,10 @@ final class ScreenSession {
         } catch (Exception e) {
             Log.w(TAG, "render", e);
         }
+        scheduleNext();
+    }
+
+    private void scheduleNext() {
         nextFrameAt += 1000 / FPS;
         long now = SystemClock.uptimeMillis();
         if (nextFrameAt < now) nextFrameAt = now;
@@ -628,6 +668,8 @@ final class ScreenSession {
         try { if (camSession != null) camSession.close(); } catch (Exception ignored) { }
         try { if (camera != null) camera.close(); } catch (Exception ignored) { }
         camera = null;
+        try { if (previewSurface != null) previewSurface.release(); } catch (Exception ignored) { }
+        previewSurface = null;
         try { if (vdisplay != null) vdisplay.release(); } catch (Exception ignored) { }
         try { projection.stop(); } catch (Exception ignored) { }
         releaseAudio();

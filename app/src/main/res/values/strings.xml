@@ -144,4 +144,20 @@
     <string name="n_waiting_screen">Waiting for screen recording permission…</string>
     <string name="err_save">Couldn\'t save the video: %s</string>
     <string name="screen_cancelled">Screen recording was not allowed</string>
+
+    <!-- v1.4: floating button + live preview -->
+    <string name="section_overlay">Floating button</string>
+    <string name="overlay_switch">Floating “Start” button and live preview of me</string>
+    <string name="overlay_hint">After you tap Start here, a small floating window with your live bubble and a “Start” button appears over Instagram. Tap it when you\'re 100% ready; tap “Stop” in it to finish. Needs the “Display over other apps” permission. In screen mode choose “A single app” in Android\'s prompt — then the floating window is not recorded into the video.</string>
+    <string name="overlay_perm_toast">Allow “Display over other apps” for Hahacam, then come back</string>
+    <string name="overlay_ready_toast">Open the app you need and tap “Start” on the floating button when you\'re ready</string>
+    <string name="ov_start">● Start</string>
+    <string name="ov_stop">■ Stop</string>
+    <string name="ov_wait">Get ready…</string>
+    <string name="ov_saving">Saving…</string>
+    <string name="ov_preparing">Preparing…</string>
+    <string name="n_ready_title">Ready to record</string>
+    <string name="n_ready_text">Tap “Start” on the floating button when you\'re ready</string>
+    <string name="st_ready">Ready — waiting for you</string>
+    <string name="btn_cancel">✕  Cancel</string>
 </resources>

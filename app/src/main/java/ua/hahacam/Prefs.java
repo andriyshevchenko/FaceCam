@@ -23,6 +23,7 @@ final class Prefs {
     final int corner;
     final int bubbleIdx;
     final boolean trim;
+    final boolean overlay;
     final int tailIdx;
 
     private Prefs(SharedPreferences p) {
@@ -37,11 +38,12 @@ final class Prefs {
         corner = clamp(p.getInt("corner", 1), 4);
         bubbleIdx = clamp(p.getInt("bubble", 1), BUBBLE_SIZE.length);
         trim = p.getBoolean("trim", true);
+        overlay = p.getBoolean("overlay", false);
         tailIdx = clamp(p.getInt("tail", 1), TAIL_SEC.length);
     }
 
     boolean screen() { return mode == MODE_SCREEN; }
-    int delaySec() { return screen() ? 0 : DELAYS_SEC[delayIdx]; }
+    int delaySec() { return screen() && !overlay ? 0 : DELAYS_SEC[delayIdx]; }
     int autoStopMin() { return AUTOSTOP_MIN[autoStopIdx]; }
     int tailSec() { return TAIL_SEC[tailIdx]; }
     float bubbleFrac() { return BUBBLE_SIZE[bubbleIdx]; }

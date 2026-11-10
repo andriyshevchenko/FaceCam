@@ -144,4 +144,20 @@
     <string name="n_waiting_screen">Чекаю дозволу на запис екрана…</string>
     <string name="err_save">Не вдалося зберегти відео: %s</string>
     <string name="screen_cancelled">Запис екрана не дозволено</string>
+
+    <!-- v1.4: плаваюча кнопка + живе прев'ю -->
+    <string name="section_overlay">Плаваюча кнопка</string>
+    <string name="overlay_switch">Плаваюча кнопка «Почати» і живе прев\'ю мене</string>
+    <string name="overlay_hint">Після «Почати запис» тут над Instagram з\'явиться маленьке плаваюче вікно з вашим живим кружечком і кнопкою «Почати». Натисніть її, коли будете на 100% готові; «Стоп» у ньому завершує запис. Потрібен дозвіл «Поверх інших програм». У режимі екрана вибирайте в системному запиті «Одна програма» — тоді плаваюче вікно не потрапить у відео.</string>
+    <string name="overlay_perm_toast">Дозвольте Hahacam «Поверх інших програм» і поверніться назад</string>
+    <string name="overlay_ready_toast">Відкрийте потрібну програму й натисніть «Почати» на плаваючій кнопці, коли будете готові</string>
+    <string name="ov_start">● Почати</string>
+    <string name="ov_stop">■ Стоп</string>
+    <string name="ov_wait">Готуйтесь…</string>
+    <string name="ov_saving">Зберігаю…</string>
+    <string name="ov_preparing">Готую…</string>
+    <string name="n_ready_title">Готово до запису</string>
+    <string name="n_ready_text">Натисніть «Почати» на плаваючій кнопці, коли будете готові</string>
+    <string name="st_ready">Готово — чекаю на вас</string>
+    <string name="btn_cancel">✕  Скасувати</string>
 </resources>
